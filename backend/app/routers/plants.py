@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import Plant
+from app.database import get_db
+from app.models.plant import Plant
+from app.schemas.plant import PlantCreate, PlantResponse
 
 
 router = APIRouter(
@@ -11,21 +12,17 @@ router = APIRouter(
 )
 
 
-# Add Plant
-@router.post("/")
+@router.post("/", response_model=PlantResponse)
 def add_plant(
-    name: str,
-    plant_type: str,
-    location: str = "",
-    symptoms: str = "",
+    plant_data: PlantCreate,
     db: Session = Depends(get_db)
 ):
 
     plant = Plant(
-        name=name,
-        plant_type=plant_type,
-        location=location,
-        symptoms=symptoms
+        name=plant_data.name,
+        plant_type=plant_data.plant_type,
+        location=plant_data.location,
+        owner_name=plant_data.owner_name
     )
 
     db.add(plant)
@@ -35,27 +32,23 @@ def add_plant(
     return plant
 
 
-# Get/Search Plants
-@router.get("/")
+@router.get("/", response_model=list[PlantResponse])
 def get_plants(
     search: str = "",
     db: Session = Depends(get_db)
 ):
 
     if search:
-
         plants = db.query(Plant).filter(
             Plant.name.ilike(f"%{search}%")
         ).all()
 
     else:
-
         plants = db.query(Plant).all()
 
     return plants
 
 
-# Delete Plant
 @router.delete("/{plant_id}")
 def delete_plant(
     plant_id: int,
@@ -67,10 +60,10 @@ def delete_plant(
     ).first()
 
     if not plant:
-
-        return {
-            "message": "Plant not found"
-        }
+        raise HTTPException(
+            status_code=404,
+            detail="Plant not found"
+        )
 
     db.delete(plant)
     db.commit()

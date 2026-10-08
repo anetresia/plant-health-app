@@ -17,14 +17,13 @@ function MyPlants() {
 
   const [location, setLocation] = useState("");
 
-  const [symptoms, setSymptoms] = useState("");
+  const [ownerName, setOwnerName] = useState("");
 
   const [search, setSearch] = useState("");
 
   const [loading, setLoading] = useState(false);
 
 
-  // Load plants from backend
   async function loadPlants() {
 
     try {
@@ -49,8 +48,6 @@ function MyPlants() {
   }
 
 
-  // Load plants when page opens
-  // and when search changes
   useEffect(() => {
 
     loadPlants();
@@ -58,16 +55,15 @@ function MyPlants() {
   }, [search]);
 
 
-  // Add plant
   async function handleAddPlant(e) {
 
     e.preventDefault();
 
 
-    if (!name || !plantType || !symptoms) {
+    if (!name || !plantType || !ownerName) {
 
       alert(
-        "Plant name, plant type and symptoms are required."
+        "Plant name, plant type and owner name are required."
       );
 
       return;
@@ -84,12 +80,10 @@ function MyPlants() {
 
         location: location,
 
-        symptoms: symptoms
+        owner_name: ownerName
 
       });
 
-
-      // Clear form
 
       setName("");
 
@@ -97,10 +91,8 @@ function MyPlants() {
 
       setLocation("");
 
-      setSymptoms("");
+      setOwnerName("");
 
-
-      // Reload plants
 
       loadPlants();
 
@@ -115,7 +107,6 @@ function MyPlants() {
   }
 
 
-  // Delete plant
   async function handleDelete(id) {
 
     try {
@@ -139,8 +130,6 @@ function MyPlants() {
     <div className="page">
 
 
-      {/* PAGE HEADER */}
-
       <div className="hero-small">
 
         <span>🌿</span>
@@ -155,8 +144,6 @@ function MyPlants() {
 
 
 
-      {/* ADD PLANT */}
-
       <div className="form-card">
 
         <h2>Add a Plant</h2>
@@ -168,8 +155,6 @@ function MyPlants() {
 
         <form onSubmit={handleAddPlant}>
 
-
-          {/* PLANT NAME */}
 
           <label>
             Plant Name
@@ -185,8 +170,6 @@ function MyPlants() {
           />
 
 
-          {/* PLANT TYPE */}
-
           <label>
             Plant Type
           </label>
@@ -200,8 +183,6 @@ function MyPlants() {
             }
           />
 
-
-          {/* LOCATION */}
 
           <label>
             Location <span>(Optional)</span>
@@ -217,23 +198,19 @@ function MyPlants() {
           />
 
 
-          {/* SYMPTOMS */}
-
           <label>
-            Symptoms
+            Owner Name
           </label>
 
-          <textarea
-            rows="4"
-            placeholder="Example: Lower leaves are turning yellow and curling..."
-            value={symptoms}
+          <input
+            type="text"
+            placeholder="Example: Resia"
+            value={ownerName}
             onChange={(e) =>
-              setSymptoms(e.target.value)
+              setOwnerName(e.target.value)
             }
           />
 
-
-          {/* ADD BUTTON */}
 
           <button
             className="primary-btn"
@@ -249,8 +226,6 @@ function MyPlants() {
       </div>
 
 
-
-      {/* SEARCH */}
 
       <div className="search-section">
 
@@ -279,8 +254,6 @@ function MyPlants() {
 
 
 
-      {/* LOADING */}
-
       {loading && (
 
         <div className="empty-state">
@@ -296,8 +269,6 @@ function MyPlants() {
       )}
 
 
-
-      {/* PLANTS */}
 
       {!loading && (
 
@@ -329,16 +300,12 @@ function MyPlants() {
               >
 
 
-                {/* PLANT IMAGE */}
-
                 <div className="plant-image">
 
                   🌱
 
                 </div>
 
-
-                {/* PLANT INFORMATION */}
 
                 <div className="plant-info">
 
@@ -364,23 +331,20 @@ function MyPlants() {
                   </p>
 
 
-                  <p className="plant-symptoms">
+                  <p className="plant-owner">
+
+                    👤{" "}
 
                     <strong>
-                      Symptoms:
-                    </strong>
+                      Owner:
+                    </strong>{" "}
 
-                    <br />
-
-                    {plant.symptoms ||
-                      "No symptoms provided"}
+                    {plant.owner_name}
 
                   </p>
 
                 </div>
 
-
-                {/* DELETE */}
 
                 <button
                   className="delete-btn"
