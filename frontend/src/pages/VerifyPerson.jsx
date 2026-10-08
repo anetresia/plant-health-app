@@ -62,7 +62,7 @@ function VerifyPerson() {
       setSuccess(false);
 
       setMessage(
-        "Registration failed."
+        error.message || "Registration failed."
       );
 
     } finally {
@@ -105,7 +105,7 @@ function VerifyPerson() {
       setSuccess(true);
 
       setMessage(
-        `Welcome ${data.person.name}! Your identity has been verified successfully.`
+        `Welcome ${data.name}! Your identity has been verified successfully.`
       );
 
 
@@ -116,6 +116,7 @@ function VerifyPerson() {
       setSuccess(false);
 
       setMessage(
+        error.message ||
         "Verification failed. Please check your name and email."
       );
 
@@ -130,7 +131,6 @@ function VerifyPerson() {
   return (
 
     <div className="page">
-
 
       <div className="hero-small">
 
@@ -159,7 +159,6 @@ function VerifyPerson() {
 
 
         <form>
-
 
           <label>
             Full Name

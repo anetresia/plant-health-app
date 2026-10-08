@@ -25,7 +25,7 @@ def create_person(
     if existing_person:
         raise HTTPException(
             status_code=400,
-            detail="Person with this email already exists"
+            detail="This person is already registered."
         )
 
     person = Person(
@@ -55,7 +55,7 @@ def verify_person(
     if not person:
         raise HTTPException(
             status_code=404,
-            detail="Person not found"
+            detail="Person not found."
         )
 
     return person
