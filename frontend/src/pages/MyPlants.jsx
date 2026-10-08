@@ -6,135 +6,244 @@ import {
   deletePlant
 } from "../services/api";
 
+function MyPlants({
+  setPage,
+  setSelectedPlantId
+}) {
+  // =================================
+  // LOGGED-IN USER
+  // =================================
+  // Login success aana user information
+  // localStorage-la save pannirukkom.
+  //
+  // Andha user name-a eduthu
+  // current owner-aa use pannrom.
 
-function MyPlants() {
+  const storedUser =
+    localStorage.getItem("plantCareUser");
 
+  const currentUser = storedUser
+    ? JSON.parse(storedUser)
+    : null;
+
+  const currentUserName =
+    currentUser?.name || "";
+
+  // =================================
+  // PLANTS STATE
+  // =================================
+
+  // Backend-la irundhu varra
+  // plants list-a store pannrom.
   const [plants, setPlants] = useState([]);
 
+  // Add Plant form values
   const [name, setName] = useState("");
-
   const [plantType, setPlantType] = useState("");
-
   const [location, setLocation] = useState("");
 
-  const [ownerName, setOwnerName] = useState("");
-
+  // Search value
   const [search, setSearch] = useState("");
 
+  // Loading status
   const [loading, setLoading] = useState(false);
 
+  // =================================
+  // LOAD PLANTS
+  // =================================
 
   async function loadPlants() {
-
     try {
-
       setLoading(true);
+
+      // Inga owner filter use pannala.
+      //
+      // Reason:
+      // User-created plants mattum illaama,
+      // other users-oda plants-um view panna
+      // allow pannrom.
+      //
+      // But Delete button mattum owner-ku
+      // condition based-a show pannuvom.
 
       const data = await getPlants(search);
 
       setPlants(data);
 
     } catch (error) {
-
       console.error(error);
 
-      alert("Failed to load plants.");
+      alert(
+        error.message ||
+        "Failed to load plants."
+      );
 
     } finally {
-
       setLoading(false);
-
     }
   }
 
+  // =================================
+  // LOAD PLANTS WHEN SEARCH CHANGES
+  // =================================
 
   useEffect(() => {
-
     loadPlants();
-
   }, [search]);
 
+  // =================================
+  // ADD PLANT
+  // =================================
 
   async function handleAddPlant(e) {
-
+    // Browser form refresh-a stop pannrom.
     e.preventDefault();
 
-
-    if (!name || !plantType || !ownerName) {
-
+    // Login pannala na plant add
+    // panna allow panna koodathu.
+    if (!currentUserName) {
       alert(
-        "Plant name, plant type and owner name are required."
+        "Please login before adding a plant."
       );
 
       return;
     }
 
+    // Required fields check
+    if (
+      !name.trim() ||
+      !plantType.trim()
+    ) {
+      alert(
+        "Plant name and plant type are required."
+      );
+
+      return;
+    }
 
     try {
+      // =================================
+      // ADD PLANT TO BACKEND
+      // =================================
+      // Owner name manually type panna vendam.
+      //
+      // Login pannina current user's name
+      // automatically owner_name-aa send pannrom.
 
       await addPlant({
-
         name: name,
-
         plant_type: plantType,
-
         location: location,
-
-        owner_name: ownerName
-
+        owner_name: currentUserName
       });
 
-
+      // Form clear
       setName("");
-
       setPlantType("");
-
       setLocation("");
 
-      setOwnerName("");
-
-
+      // Updated plants list load
       loadPlants();
 
-
     } catch (error) {
-
       console.error(error);
 
-      alert("Failed to add plant.");
-
+      alert(
+        error.message ||
+        "Failed to add plant."
+      );
     }
   }
 
+  // =================================
+  // DELETE PLANT
+  // =================================
 
-  async function handleDelete(id) {
+  async function handleDelete(plant) {
+    // =================================
+    // OWNER CHECK
+    // =================================
+    // Current logged-in user than
+    // plant owner-aa irukkanum.
+
+    if (
+      plant.owner_name !== currentUserName
+    ) {
+      alert(
+        "You can only delete your own plants."
+      );
+
+      return;
+    }
+
+    // =================================
+    // DELETE CONFIRMATION
+    // =================================
+    // User confirmation illama delete
+    // panna koodathu.
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${plant.name}"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
 
     try {
+      // =================================
+      // DELETE FROM BACKEND
+      // =================================
+      // Backend owner verification-ku
+      // current user's name send pannrom.
 
-      await deletePlant(id);
+      await deletePlant(
+        plant.id,
+        currentUserName
+      );
 
+      // Delete successful aana
+      // latest list reload pannrom.
       loadPlants();
 
     } catch (error) {
-
       console.error(error);
 
-      alert("Failed to delete plant.");
-
+      alert(
+        error.message ||
+        "Failed to delete plant."
+      );
     }
   }
 
+  // =================================
+  // OPEN PLANT HEALTH CHECK
+  // =================================
+
+  function handlePlantClick(plant) {
+    // Selected plant ID App.jsx-ku send pannrom.
+    setSelectedPlantId(plant.id);
+
+    // Plant Check page open pannrom.
+    setPage("plant-check");
+  }
 
   return (
-
     <div className="page">
 
+      {/* =================================
+          PAGE HEADER
+      ================================== */}
 
       <div className="hero-small">
 
-        <span>🌿</span>
+        <span>
+          🌿
+        </span>
 
-        <h1>My Plants</h1>
+        <h1>
+          My Plants
+        </h1>
 
         <p>
           Add and manage your plants in one place.
@@ -143,18 +252,24 @@ function MyPlants() {
       </div>
 
 
+      {/* =================================
+          ADD PLANT FORM
+      ================================== */}
 
       <div className="form-card">
 
-        <h2>Add a Plant</h2>
+        <h2>
+          Add a Plant
+        </h2>
 
         <p className="card-description">
-          Save your plant information for future analysis.
+          Your logged-in account will automatically
+          be saved as the plant owner.
         </p>
-
 
         <form onSubmit={handleAddPlant}>
 
+          {/* Plant Name */}
 
           <label>
             Plant Name
@@ -170,6 +285,8 @@ function MyPlants() {
           />
 
 
+          {/* Plant Type */}
+
           <label>
             Plant Type
           </label>
@@ -184,8 +301,13 @@ function MyPlants() {
           />
 
 
+          {/* Location */}
+
           <label>
-            Location <span>(Optional)</span>
+            Location{" "}
+            <span>
+              (Optional)
+            </span>
           </label>
 
           <input
@@ -198,27 +320,26 @@ function MyPlants() {
           />
 
 
+          {/* Owner */}
+
           <label>
             Owner Name
           </label>
 
           <input
             type="text"
-            placeholder="Example: Resia"
-            value={ownerName}
-            onChange={(e) =>
-              setOwnerName(e.target.value)
-            }
+            value={currentUserName}
+            readOnly
           />
 
+
+          {/* Add Button */}
 
           <button
             className="primary-btn"
             type="submit"
           >
-
             + Add Plant
-
           </button>
 
         </form>
@@ -226,19 +347,24 @@ function MyPlants() {
       </div>
 
 
+      {/* =================================
+          SEARCH SECTION
+      ================================== */}
 
       <div className="search-section">
 
         <div>
 
-          <h2>Your Plants</h2>
+          <h2>
+            Your Plants
+          </h2>
 
           <p>
-            Search and manage your saved plants.
+            Search plants and view their
+            health information.
           </p>
 
         </div>
-
 
         <input
           className="search-input"
@@ -253,12 +379,17 @@ function MyPlants() {
       </div>
 
 
+      {/* =================================
+          LOADING
+      ================================== */}
 
       {loading && (
 
         <div className="empty-state">
 
-          <div>🔄</div>
+          <div>
+            🔄
+          </div>
 
           <h3>
             Loading plants...
@@ -269,6 +400,9 @@ function MyPlants() {
       )}
 
 
+      {/* =================================
+          PLANT LIST
+      ================================== */}
 
       {!loading && (
 
@@ -278,7 +412,9 @@ function MyPlants() {
 
             <div className="empty-state">
 
-              <div>🌱</div>
+              <div>
+                🌱
+              </div>
 
               <h3>
                 No plants found
@@ -292,74 +428,132 @@ function MyPlants() {
 
           ) : (
 
-            plants.map((plant) => (
+            plants.map((plant) => {
 
-              <div
-                className="plant-card"
-                key={plant.id}
-              >
+              // =================================
+              // CHECK PLANT OWNER
+              // =================================
+              // Current user name and
+              // plant owner name same-aa irundha
+              // idhu current user's plant.
 
+              const isOwner =
+                plant.owner_name ===
+                currentUserName;
 
-                <div className="plant-image">
+              return (
 
-                  🌱
+                <div
+                  className="plant-card"
+                  key={plant.id}
 
-                </div>
-
-
-                <div className="plant-info">
-
-                  <h3>
-                    {plant.name}
-                  </h3>
-
-
-                  <p className="plant-type">
-
-                    {plant.plant_type}
-
-                  </p>
-
-
-                  <p className="plant-location">
-
-                    📍{" "}
-
-                    {plant.location ||
-                      "Location not provided"}
-
-                  </p>
-
-
-                  <p className="plant-owner">
-
-                    👤{" "}
-
-                    <strong>
-                      Owner:
-                    </strong>{" "}
-
-                    {plant.owner_name}
-
-                  </p>
-
-                </div>
-
-
-                <button
-                  className="delete-btn"
+                  // Whole card click
+                  // Plant Check page open pannum.
                   onClick={() =>
-                    handleDelete(plant.id)
+                    handlePlantClick(plant)
                   }
+
+                  style={{
+                    cursor: "pointer"
+                  }}
                 >
 
-                  Delete
+                  {/* =================================
+                      PLANT IMAGE
+                  ================================== */}
 
-                </button>
+                  <div className="plant-image">
+                    🌱
+                  </div>
 
-              </div>
 
-            ))
+                  {/* =================================
+                      PLANT INFORMATION
+                  ================================== */}
+
+                  <div className="plant-info">
+
+                    <h3>
+                      {plant.name}
+                    </h3>
+
+                    <p className="plant-type">
+                      {plant.plant_type}
+                    </p>
+
+                    <p className="plant-location">
+                      📍{" "}
+                      {plant.location ||
+                        "Location not provided"}
+                    </p>
+
+                    <p className="plant-owner">
+                      👤{" "}
+
+                      <strong>
+                        Owner:
+                      </strong>{" "}
+
+                      {plant.owner_name}
+
+                    </p>
+
+                  </div>
+
+
+                  {/* =================================
+                      VIEW HEALTH CHECK
+                  ================================== */}
+
+                  <button
+                    className="primary-btn"
+                    type="button"
+
+                    onClick={(e) => {
+
+                      // Parent card click stop
+                      e.stopPropagation();
+
+                      // Plant Check open
+                      handlePlantClick(plant);
+
+                    }}
+                  >
+                    View Health Check
+                  </button>
+
+
+                  {/* =================================
+                      DELETE BUTTON
+                  ================================== */}
+
+                  {isOwner && (
+
+                    <button
+                      className="delete-btn"
+                      type="button"
+
+                      onClick={(e) => {
+
+                        // Parent card click stop
+                        e.stopPropagation();
+
+                        // Current user's plant
+                        // mattum delete pannuvom.
+                        handleDelete(plant);
+
+                      }}
+                    >
+                      Delete
+                    </button>
+
+                  )}
+
+                </div>
+
+              );
+
+            })
 
           )}
 
@@ -368,9 +562,7 @@ function MyPlants() {
       )}
 
     </div>
-
   );
 }
-
 
 export default MyPlants;

@@ -5,9 +5,11 @@ from app.database import Base, engine
 
 from app.models.person import Person
 from app.models.plant import Plant
+from app.models.plant_check import PlantCheck
 
 from app.routers.person import router as person_router
 from app.routers.plants import router as plants_router
+from app.routers.plant_checks import router as plant_checks_router
 
 
 # Create database tables
@@ -33,6 +35,7 @@ app.add_middleware(
 # Register routers
 app.include_router(person_router)
 app.include_router(plants_router)
+app.include_router(plant_checks_router)
 
 
 @app.get("/")
