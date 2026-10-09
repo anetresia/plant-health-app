@@ -1,451 +1,428 @@
+
 import { useEffect, useState } from "react";
 
 import {
   getPlants,
   createPlantCheck,
   analyzePlantCheck,
-  getPlantChecks
+  getPlantChecks,
 } from "../services/api";
 
+// ==========================================
+// STRUCTURED AI RESULT
+// ==========================================
+
+function AIResultDisplay({ result }) {
+  if (!result) {
+    return null;
+  }
+
+  let parsedResult = result;
+
+  // Old JSON string irundhaal parse pannrom.
+  if (typeof parsedResult === "string") {
+    try {
+      parsedResult = JSON.parse(parsedResult);
+    } catch {
+      return (
+        <div className="ai-result">
+          <h3>🤖 AI Analysis Result</h3>
+          <p>
+            This saved result is in an older format.
+            Please analyse a new plant check.
+          </p>
+        </div>
+      );
+    }
+  }
+
+  if (
+    typeof parsedResult !== "object" ||
+    Array.isArray(parsedResult)
+  ) {
+    return null;
+  }
+
+  return (
+    <div className="ai-result">
+      <h3>🤖 AI Analysis Result</h3>
+
+      <section>
+        <h4>Possible Issue</h4>
+        <p>
+          {parsedResult.possible_issue || "Not available"}
+        </p>
+      </section>
+
+      <section>
+        <h4>Explanation</h4>
+        <p>
+          {parsedResult.explanation || "Not available"}
+        </p>
+      </section>
+
+      <section>
+        <h4>Care Suggestions</h4>
+
+        {Array.isArray(parsedResult.care_suggestions) &&
+        parsedResult.care_suggestions.length > 0 ? (
+          <ul>
+            {parsedResult.care_suggestions.map(
+              (item, index) => (
+                <li key={index}>{item}</li>
+              )
+            )}
+          </ul>
+        ) : (
+          <p>No care suggestions available.</p>
+        )}
+      </section>
+
+      <section>
+        <h4>Expert Advice</h4>
+
+        {parsedResult.expert_advice_needed === true ? (
+          <p>
+            ⚠️ Expert agricultural advice is recommended.
+          </p>
+        ) : parsedResult.expert_advice_needed === false ? (
+          <p>
+            Continue monitoring your plant. Seek expert
+            advice if the symptoms persist or worsen.
+          </p>
+        ) : (
+          <p>Expert advice status is not available.</p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// ==========================================
+// PLANT CHECK COMPONENT
+// ==========================================
 
 function PlantCheck({ selectedPlantId }) {
-
-  // =================================
-  // PLANTS
-  // =================================
-
-  // Backend-la irundhu varra plants list
-  // inga store pannrom.
+  // Plants list
   const [plants, setPlants] = useState([]);
 
-
-  // =================================
-  // SELECTED PLANT
-  // =================================
-
-  // User currently check panna pora
-  // plant ID-a store pannrom.
+  // Selected plant
   const [selectedId, setSelectedId] = useState(
-    selectedPlantId || ""
+    selectedPlantId ? String(selectedPlantId) : ""
   );
 
-
-  // User enter panna symptoms
+  // Form data
   const [symptoms, setSymptoms] = useState("");
-
-
-  // Plant check date
   const [checkDate, setCheckDate] = useState("");
 
-
-  // Ippo create panna check details
+  // Current check and history
   const [currentCheck, setCurrentCheck] = useState(null);
-
-
-  // Selected plant-oda previous
-  // check history inga store pannrom.
   const [history, setHistory] = useState([]);
 
-
-  // Save request loading status
+  // Loading states
   const [loading, setLoading] = useState(false);
-
-
-  // AI analysis loading status
   const [analyzing, setAnalyzing] = useState(false);
 
-
-  // Error message
+  // Messages
   const [error, setError] = useState("");
-
-
-  // Success message
+  const [symptomsError, setSymptomsError] = useState("");
   const [message, setMessage] = useState("");
 
+  // ==========================================
+  // VALIDATE PLANT SYMPTOMS
+  // ==========================================
 
-  // =================================
+  function validateSymptoms(value) {
+    const keywords = [
+      "yellow", "yellowing", "browning", "brown",
+      "spots", "spot", "curl", "curling", "curled",
+      "wilting", "wilt", "drooping", "droop",
+      "dry", "drying", "holes", "hole", "insects",
+      "insect", "pests", "pest", "aphids", "fungus",
+      "fungal", "mold", "mildew", "rot", "rotting",
+      "black", "white", "powder", "sticky", "stunted",
+      "discoloration", "discolored", "dying", "decay",
+      "damaged", "damage", "blight", "lesions",
+      "burnt", "burning", "leaves", "leaf", "stem",
+      "roots", "root", "flowers", "flower", "fruit",
+      "growth", "falling", "fallen", "pale", "mushy",
+      "cracked", "cracking", "webbing", "infestation",
+      "patches", "patch",
+    ];
+
+    const cleanedText = value.trim().toLowerCase();
+
+    if (!cleanedText) {
+      return "Please enter the plant symptoms.";
+    }
+
+    if (cleanedText.length < 5) {
+      return (
+        "Insufficient information. Please describe " +
+        "the symptoms you notice on your plant."
+      );
+    }
+
+    const words = cleanedText
+      .replace(/[^a-zA-Z\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+
+    const hasSymptom = words.some((word) =>
+      keywords.includes(word)
+    );
+
+    if (!hasSymptom) {
+      return (
+        "Insufficient information. Please describe actual " +
+        "plant symptoms, such as yellow leaves, curling leaves, " +
+        "or brown spots."
+      );
+    }
+
+    return "";
+  }
+
+  // ==========================================
   // LOAD PLANTS
-  // =================================
+  // ==========================================
 
   useEffect(() => {
-
     async function loadPlants() {
-
       try {
-
-        // Backend-la irundhu saved plants
-        // fetch pannrom.
         const data = await getPlants();
-
         setPlants(data);
-
-      } catch (error) {
-
-        console.error(error);
-
+      } catch (err) {
+        console.error(err);
         setError(
-          error.message ||
-          "Failed to load plants"
+          err.message || "Failed to load plants."
         );
-
       }
     }
 
-
     loadPlants();
-
   }, []);
 
-
-  // =================================
+  // ==========================================
   // UPDATE SELECTED PLANT
-  // =================================
+  // ==========================================
 
   useEffect(() => {
-
-    // MyPlants-la irundhu selected plant ID
-    // vandha, atha inga set pannrom.
     if (selectedPlantId) {
-
-      setSelectedId(
-        String(selectedPlantId)
-      );
-
+      setSelectedId(String(selectedPlantId));
     }
-
   }, [selectedPlantId]);
 
-
-  // =================================
+  // ==========================================
   // LOAD PLANT HISTORY
-  // =================================
+  // ==========================================
 
   useEffect(() => {
-
     async function loadHistory() {
-
-      // Plant select pannala na
-      // history load panna vendam.
       if (!selectedId) {
-
         setHistory([]);
-
         return;
       }
 
-
       try {
-
         setError("");
 
-        // Selected plant-oda ID use panni
-        // previous checks fetch pannrom.
-        const data = await getPlantChecks(
-          selectedId
-        );
-
+        const data = await getPlantChecks(selectedId);
         setHistory(data);
-
-      } catch (error) {
-
-        console.error(error);
-
+      } catch (err) {
+        console.error(err);
         setError(
-          error.message ||
-          "Failed to load check history"
+          err.message || "Failed to load check history."
         );
-
       }
     }
 
-
     loadHistory();
-
   }, [selectedId]);
 
-
-  // =================================
+  // ==========================================
   // PLANT CHANGE
-  // =================================
+  // ==========================================
 
   function handlePlantChange(e) {
-
-    // Dropdown-la user select panna
-    // plant ID edukkrom.
     const plantId = e.target.value;
 
-
-    // Selected plant update pannrom.
     setSelectedId(plantId);
-
-
-    // Previous current check clear pannrom.
     setCurrentCheck(null);
-
-
-    // Messages clear pannrom.
+    setSymptoms("");
+    setCheckDate("");
     setMessage("");
-
     setError("");
-
+    setSymptomsError("");
   }
 
+  // ==========================================
+  // SYMPTOMS CHANGE
+  // ==========================================
 
-  // =================================
+  function handleSymptomsChange(e) {
+    setSymptoms(e.target.value);
+    setSymptomsError("");
+    setError("");
+    setMessage("");
+  }
+
+  // ==========================================
   // SAVE PLANT CHECK
-  // =================================
+  // ==========================================
 
   async function handleSubmit(e) {
-
-    // Browser form refresh stop pannrom.
     e.preventDefault();
 
-
-    // Old messages clear pannrom.
     setError("");
-
     setMessage("");
-
     setCurrentCheck(null);
+    setSymptomsError("");
 
-
-    // Plant select pannala na
-    // error show pannrom.
     if (!selectedId) {
-
-      setError(
-        "Please select a plant."
-      );
-
+      setError("Please select a plant.");
       return;
     }
 
+    const validationError = validateSymptoms(symptoms);
 
-    // Symptoms empty-aa irukka koodathu.
-    if (!symptoms.trim()) {
-
-      setError(
-        "Please enter the plant symptoms."
-      );
-
+    if (validationError) {
+      setSymptomsError(validationError);
       return;
     }
 
-
-    // Date select pannirukkanum.
     if (!checkDate) {
-
-      setError(
-        "Please select the check date."
-      );
-
+      setError("Please select the check date.");
       return;
     }
-
 
     try {
-
-      // Save request start.
       setLoading(true);
 
-
-      // Plant check details backend-ku
-      // send pannrom.
       const data = await createPlantCheck({
-
         plant_id: Number(selectedId),
-
-        symptoms: symptoms,
-
-        check_date: checkDate
-
+        symptoms: symptoms.trim(),
+        check_date: checkDate,
       });
 
-
-      // Newly created check-a
-      // current check-aa store pannrom.
       setCurrentCheck(data);
+      setMessage("Plant check saved successfully.");
 
-
-      // Success message.
-      setMessage(
-        "Plant check saved successfully."
-      );
-
-
-      // Form clear pannrom.
       setSymptoms("");
-
       setCheckDate("");
 
-
-      // Save panna apram latest
-      // history fetch pannrom.
-      const updatedHistory =
-        await getPlantChecks(selectedId);
-
-
-      setHistory(updatedHistory);
-
-    } catch (error) {
-
-      console.error(error);
-
-      setError(
-        error.message ||
-        "Failed to save plant check"
+      const updatedHistory = await getPlantChecks(
+        selectedId
       );
 
+      setHistory(updatedHistory);
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err.message || "Failed to save plant check."
+      );
     } finally {
-
-      // Loading stop.
       setLoading(false);
-
     }
   }
 
-
-  // =================================
+  // ==========================================
   // ANALYSE WITH AI
-  // =================================
+  // ==========================================
 
   async function handleAnalyze() {
-
-    // Current check illana
-    // AI analysis panna mudiyathu.
     if (!currentCheck) {
-
       return;
     }
 
+    setError("");
+    setSymptomsError("");
+    setMessage("");
+
+    const validationError = validateSymptoms(
+      currentCheck.symptoms
+    );
+
+    if (validationError) {
+      setSymptomsError(validationError);
+      setError(validationError);
+      return;
+    }
 
     try {
-
-      // AI loading start.
       setAnalyzing(true);
 
-      setError("");
-
-      setMessage("");
-
-
-      // Backend-ku check ID send pannrom.
-      //
-      // Backend:
-      // PlantCheck → Gemini AI
       const data = await analyzePlantCheck(
         currentCheck.id
       );
 
-
-      // AI result-oda updated check
-      // current check-aa save pannrom.
       setCurrentCheck(data);
 
-
-      // Success message.
       setMessage(
         "Plant analysis completed successfully."
       );
 
-
-      // Latest history fetch pannrom.
-      const updatedHistory =
-        await getPlantChecks(selectedId);
-
-
-      setHistory(updatedHistory);
-
-    } catch (error) {
-
-      console.error(error);
-
-      setError(
-        error.message ||
-        "Failed to analyze plant"
+      const updatedHistory = await getPlantChecks(
+        selectedId
       );
 
+      setHistory(updatedHistory);
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err.message || "Failed to analyze plant."
+      );
     } finally {
-
-      // AI loading stop.
       setAnalyzing(false);
-
     }
   }
 
-
-  // =================================
+  // ==========================================
   // FIND SELECTED PLANT
-  // =================================
+  // ==========================================
 
-  // Selected ID use panni
-  // actual plant object-a find pannrom.
   const selectedPlant = plants.find(
-    (plant) =>
-      plant.id === Number(selectedId)
+    (plant) => plant.id === Number(selectedId)
   );
 
+  // ==========================================
+  // UI
+  // ==========================================
 
   return (
-
     <div className="page">
-
-
-      {/* =================================
-          PAGE HEADER
-      ================================== */}
-
+      {/* PAGE HEADER */}
       <div className="hero">
+        <div className="hero-icon">🌱</div>
 
-        <div className="hero-icon">
-          🌱
-        </div>
-
-        <h1>
-          Plant Health Check
-        </h1>
+        <h1>Plant Health Check</h1>
 
         <p>
-          Check your plant's symptoms and
-          review its previous health information.
+          Check your plant's symptoms and review its
+          previous health information.
         </p>
-
       </div>
 
-
-      {/* ERROR */}
-
+      {/* GENERAL ERROR */}
       {error && (
-
-        <div className="error-message">
+        <div className="error-message" role="alert">
           {error}
         </div>
-
       )}
 
-
-      {/* SUCCESS */}
-
+      {/* SUCCESS MESSAGE */}
       {message && (
-
-        <div className="success-message">
+        <div className="success-message" role="status">
           {message}
         </div>
-
       )}
 
-
-      {/* =================================
-          SELECTED PLANT INFORMATION
-      ================================== */}
-
+      {/* SELECTED PLANT INFORMATION */}
       {selectedPlant && (
-
         <div className="form-card">
-
-          <h2>
-            🌿 {selectedPlant.name}
-          </h2>
+          <h2>🌿 {selectedPlant.name}</h2>
 
           <p>
             <strong>Type:</strong>{" "}
@@ -454,98 +431,96 @@ function PlantCheck({ selectedPlantId }) {
 
           <p>
             <strong>Location:</strong>{" "}
-            {selectedPlant.location ||
-              "Not specified"}
+            {selectedPlant.location || "Not specified"}
           </p>
 
           <p>
             <strong>Owner:</strong>{" "}
             {selectedPlant.owner_name}
           </p>
-
         </div>
-
       )}
 
-
-      {/* =================================
-          PLANT CHECK FORM
-      ================================== */}
-
+      {/* PLANT CHECK FORM */}
       <div className="form-card">
-
-        <h2>
-          New Health Check
-        </h2>
+        <h2>New Health Check</h2>
 
         <p className="card-description">
-          Describe what you notice about
-          your plant.
+          Describe what you notice about your plant.
         </p>
 
-
         <form onSubmit={handleSubmit}>
-
-
           {/* PLANT SELECT */}
-
-          <label>
+          <label htmlFor="plant-select">
             Select Plant
           </label>
 
           <select
+            id="plant-select"
             value={selectedId}
             onChange={handlePlantChange}
             required
           >
-
             <option value="">
               -- Select a plant --
             </option>
 
-
             {plants.map((plant) => (
-
               <option
                 key={plant.id}
                 value={plant.id}
               >
-
                 {plant.name} - {plant.plant_type}
-
               </option>
-
             ))}
-
           </select>
 
-
-          {/* =================================
-              SYMPTOMS / QUESTION
-          ================================== */}
-
-          <label>
+          {/* SYMPTOMS */}
+          <label htmlFor="plant-symptoms">
             What problem are you noticing?
           </label>
 
           <textarea
+            id="plant-symptoms"
             rows="5"
             value={symptoms}
-            onChange={(e) =>
-              setSymptoms(e.target.value)
-            }
+            onChange={handleSymptomsChange}
             placeholder="Example: The lower leaves are turning yellow and curling..."
             required
+            aria-invalid={Boolean(symptomsError)}
+            aria-describedby={
+              symptomsError ? "symptoms-error" : undefined
+            }
+            style={
+              symptomsError
+                ? { border: "1px solid #dc2626" }
+                : undefined
+            }
           />
 
+          {symptomsError && (
+            <p
+              id="symptoms-error"
+              role="alert"
+              style={{
+                color: "#dc2626",
+                fontSize: "14px",
+                marginTop: "6px",
+                marginBottom: "12px",
+                lineHeight: "1.5",
+              }}
+            >
+              ⚠️ {symptomsError}
+            </p>
+          )}
 
           {/* CHECK DATE */}
-
-          <label>
+          <label htmlFor="check-date">
             Check Date
           </label>
 
           <input
+            id="check-date"
             type="date"
             value={checkDate}
             onChange={(e) =>
@@ -554,187 +529,93 @@ function PlantCheck({ selectedPlantId }) {
             required
           />
 
-
           {/* SAVE CHECK */}
-
           <button
             className="primary-btn"
             type="submit"
-            disabled={loading}
+            disabled={loading || analyzing}
           >
-
-            {loading
-              ? "Saving..."
-              : "Save Plant Check"}
-
+            {loading ? "Saving..." : "Save Plant Check"}
           </button>
-
         </form>
-
       </div>
 
-
-      {/* =================================
-          CURRENT CHECK
-      ================================== */}
-
+      {/* CURRENT CHECK */}
       {currentCheck && (
-
         <div className="form-card">
-
-          <h2>
-            Latest Health Check
-          </h2>
-
+          <h2>Latest Health Check</h2>
 
           <p>
             <strong>Problem:</strong>
           </p>
 
-          <p>
-            {currentCheck.symptoms}
-          </p>
-
+          <p>{currentCheck.symptoms}</p>
 
           <p>
             <strong>Check Date:</strong>{" "}
             {currentCheck.check_date}
           </p>
 
-
-          {/* =================================
-              ANALYSE BUTTON
-              AI result illana mattum button display aagum.
-          ================================== */}
-
+          {/* ANALYSE BUTTON */}
           {!currentCheck.ai_result && (
-
             <button
               className="primary-btn"
               type="button"
               onClick={handleAnalyze}
-              disabled={analyzing}
+              disabled={analyzing || loading}
             >
-
               {analyzing
                 ? "Analysing..."
                 : "Analyse with AI"}
-
             </button>
-
           )}
 
-
-          {/* =================================
-              AI RESULT
-          ================================== */}
-
-          {currentCheck.ai_result && (
-
-            <div className="ai-result">
-
-              <h2>
-                🤖 AI Analysis Result
-              </h2>
-
-              <p>
-                {currentCheck.ai_result}
-              </p>
-
-            </div>
-
-          )}
-
+          {/* STRUCTURED AI RESULT */}
+          <AIResultDisplay
+            result={currentCheck.ai_result}
+          />
         </div>
-
       )}
 
-
-      {/* =================================
-          PREVIOUS HISTORY
-      ================================== */}
-
+      {/* PREVIOUS HISTORY */}
       {selectedId && (
-
         <div className="form-card">
-
-          <h2>
-            Previous Health Checks
-          </h2>
-
+          <h2>Previous Health Checks</h2>
 
           {history.length === 0 ? (
-
             <p>
-              No previous checks found for
-              this plant.
+              No previous checks found for this plant.
             </p>
-
           ) : (
-
             history.map((check) => (
-
               <div
                 className="history-card"
                 key={check.id}
               >
-
-                <h3>
-                  Check #{check.id}
-                </h3>
-
+                <h3>Check #{check.id}</h3>
 
                 <p>
                   <strong>Date:</strong>{" "}
                   {check.check_date}
                 </p>
 
-
-                {/* User previous question /
-                    symptom */}
-
                 <p>
-                  <strong>
-                    Problem noticed:
-                  </strong>
+                  <strong>Problem noticed:</strong>
                 </p>
 
-                <p>
-                  {check.symptoms}
-                </p>
+                <p>{check.symptoms}</p>
 
-
-                {/* Previous AI result */}
-
-                {check.ai_result && (
-
-                  <div className="ai-result">
-
-                    <h4>
-                      🤖 AI Result
-                    </h4>
-
-                    <p>
-                      {check.ai_result}
-                    </p>
-
-                  </div>
-
-                )}
-
+                {/* STRUCTURED HISTORY AI RESULT */}
+                <AIResultDisplay
+                  result={check.ai_result}
+                />
               </div>
-
             ))
-
           )}
-
         </div>
-
       )}
-
     </div>
   );
 }
-
 
 export default PlantCheck;
