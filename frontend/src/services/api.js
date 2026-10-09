@@ -9,13 +9,10 @@ const API_URL = "http://127.0.0.1:8000";
 // =================================
 // CREATE PERSON
 // =================================
-//
 // Register page-la user enter panna
 // name + email backend-ku send pannrom.
-//
 // Backend:
 // POST /persons/
-//
 export async function createPerson(
   name,
   email
@@ -66,13 +63,10 @@ export async function createPerson(
 // =================================
 // VERIFY PERSON
 // =================================
-//
 // Login page-la user enter panna
 // name + email backend-la verify pannrom.
-//
 // Backend:
 // GET /persons/verify
-//
 export async function verifyPerson(
   name,
   email
@@ -111,27 +105,19 @@ export async function verifyPerson(
 // =================================
 // GET PLANTS
 // =================================
-//
 // search:
 // User search panna plant name.
-//
 // ownerName:
 // Currently login pannirukkura
 // user's name.
-//
 // Example:
-//
 // ownerName = "Resia"
 // search = "Tomato"
-//
 // Backend rendu condition-um check pannum:
-//
 // owner_name = Resia
 // AND
 // plant name contains Tomato
-//
 // So Resia-oda Tomato plants mattum varum.
-//
 export async function getPlants(
   search = "",
   ownerName = ""
@@ -169,16 +155,12 @@ export async function getPlants(
 // =================================
 // ADD PLANT
 // =================================
-//
 // MyPlants page-la user add panna
 // plant details backend-ku send pannrom.
-//
 // owner_name:
 // Login pannirukkura user's name.
-//
 // User owner name manually enter
 // panna vendiya avasiyam illa.
-//
 export async function addPlant(
   plant
 ) {
@@ -237,23 +219,17 @@ export async function addPlant(
 // =================================
 // DELETE PLANT
 // =================================
-//
 // id:
 // Delete panna pora plant ID.
-//
 // ownerName:
 // Currently login pannirukkura
 // user's name.
-//
 // Backend rendu information-um
 // verify pannum.
-//
 // Same owner:
 // Delete ✅
-//
 // Different owner:
 // Delete ❌
-//
 export async function deletePlant(
   id,
   ownerName
@@ -300,13 +276,10 @@ export async function deletePlant(
 // =================================
 // CREATE PLANT CHECK
 // =================================
-//
 // User symptoms + date save pannumbothu
 // backend-ku request send pannrom.
-//
 // Backend:
 // POST /plant-checks/
-//
 export async function createPlantCheck(
   checkData
 ) {
@@ -366,16 +339,14 @@ export async function createPlantCheck(
 // =================================
 // ANALYSE PLANT CHECK WITH AI
 // =================================
-//
 // Current check ID backend-ku send pannrom.
-//
 // Backend:
 // Plant Check
 //      ↓
 // Gemini AI
 //      ↓
 // AI result
-//
+
 export async function analyzePlantCheck(
   checkId
 ) {
@@ -417,17 +388,12 @@ export async function analyzePlantCheck(
 // =================================
 // GET PLANT CHECK HISTORY
 // =================================
-//
 // Specific plant-oda previous
 // health checks mattum fetch pannrom.
-//
 // Example:
-//
 // plantId = 5
-//
 // Backend:
 // GET /plant-checks/plant/5
-//
 export async function getPlantChecks(
   plantId
 ) {

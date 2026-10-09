@@ -68,7 +68,6 @@ function MyPlants({
   // =================================
   // Endha plant-oda health check
   // open pannirukkom-nu store pannrom.
-  //
   // Initially null.
   // So page open aagumbothu
   // health result edhuvum show aagadhu.
@@ -342,12 +341,9 @@ function MyPlants({
       // GET THIS PLANT'S HISTORY
       // =================================
       // Important:
-      //
       // plant.id use pannrom.
-      //
       // So Tomato click pannina
       // Tomato history mattum varum.
-      //
       // Chilli click pannina
       // Chilli history mattum varum.
 
@@ -359,7 +355,6 @@ function MyPlants({
 
       // Backend date descending order-la
       // history return pannum.
-      //
       // So first item latest check.
 
       const latestCheck =
@@ -700,12 +695,9 @@ function MyPlants({
                       HEALTH CHECK SECTION
                   ================================== */}
                   {/* 
-                      IMPORTANT:
-                      Initially hidden.
+                      IMPORTANT: Initially hidden.
                       
-                      View Health Check button click
-                      pannina mattum indha section
-                      show aagum.
+                      View Health Check button click pannina mattum indha section show aagum.
                   */}
 
                   {isExpanded && (

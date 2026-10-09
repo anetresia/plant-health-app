@@ -55,7 +55,6 @@ function Register({ setPage }) {
 
       // api.js-la irukkura createPerson()
       // function-a call pannrom
-      //
       // name + email backend-ku send aagum
       const data = await createPerson(
         name,
@@ -110,9 +109,7 @@ function Register({ setPage }) {
 
       {/* =================================
           REGISTER CARD
-
-          User registration form
-          inga display pannrom.
+          User registration form inga display pannrom.
       ================================== */}
 
       <div className="auth-card">
@@ -139,9 +136,7 @@ function Register({ setPage }) {
 
         {/* =================================
             ERROR MESSAGE
-
-            Backend or validation error
-            iruntha mattum display aagum.
+            Backend or validation error iruntha mattum display aagum.
         ================================== */}
 
         {error && (
@@ -153,9 +148,7 @@ function Register({ setPage }) {
 
         {/* =================================
             SUCCESS MESSAGE
-
-            Registration successful aana
-            intha message display aagum.
+            Registration successful aana intha message display aagum.
         ================================== */}
 
         {message && (
@@ -167,7 +160,6 @@ function Register({ setPage }) {
 
         {/* =================================
             REGISTER FORM
-
             User name + email enter pannuvaanga.
         ================================== */}
 
@@ -210,9 +202,7 @@ function Register({ setPage }) {
 
           {/* =================================
               REGISTER BUTTON
-
-              Loading iruntha button text
-              "Registering..." nu maarum.
+              Loading iruntha button text "Registering..." nu maarum.
           ================================== */}
 
           <button
@@ -230,9 +220,7 @@ function Register({ setPage }) {
 
         {/* =================================
             LOGIN LINK
-
-            Already account iruntha
-            Login page-ku pogalaam.
+            Already account iruntha Login page-ku pogalaam.
         ================================== */}
 
         <div className="auth-switch">

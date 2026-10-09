@@ -7,8 +7,7 @@ function Home({ setPage }) {
       {/* =================================
           HERO SECTION
 
-          User application open pannumbothu
-          first-aa paakura main section.
+          User application open pannumbothu first-aa paakura main section.
       ================================== */}
 
       <section className="home-hero">
@@ -17,8 +16,7 @@ function Home({ setPage }) {
         {/* =================================
             HERO TEXT
 
-            Application enna purpose-ku
-            use aaguthu-nu explain pannrom.
+            Application enna purpose-ku use aaguthu-nu explain pannrom.
         ================================== */}
 
         <div className="hero-content">
@@ -48,8 +46,7 @@ function Home({ setPage }) {
           {/* =================================
               HERO BUTTONS
 
-              Login/Register pages-ku
-              navigate panna use pannrom.
+              Login/Register pages-ku navigate panna use pannrom.
           ================================== */}
 
           <div className="hero-buttons">
@@ -81,8 +78,7 @@ function Home({ setPage }) {
         {/* =================================
             HERO VISUAL
 
-            Actual image use pannama simple
-            CSS + emoji visual create pannrom.
+            Actual image use pannama simple CSS + emoji visual create pannrom.
         ================================== */}
 
         <div className="hero-visual">
@@ -116,8 +112,7 @@ function Home({ setPage }) {
       {/* =================================
           FEATURES SECTION
 
-          Application-la user-ku available
-          irukkura main features-a explain pannrom.
+          Application-la user-ku available irukkura main features-a explain pannrom.
       ================================== */}
 
       <section className="features-section">
@@ -216,8 +211,7 @@ function Home({ setPage }) {
       {/* =================================
           HOW IT WORKS
 
-          Application use panna vendiya
-          basic steps-a explain pannrom.
+          Application use panna vendiya basic steps-a explain pannrom.
       ================================== */}
 
       <section className="how-section">

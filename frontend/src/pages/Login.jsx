@@ -118,8 +118,7 @@ function Login({ setPage, onLogin }) {
         {/* =================================
             ERROR MESSAGE
 
-            Login fail aana mattum
-            intha message display aagum.
+            Login fail aana mattum intha message display aagum.
         ================================== */}
 
         {error && (
@@ -173,8 +172,7 @@ function Login({ setPage, onLogin }) {
           {/* =================================
               LOGIN BUTTON
 
-              Backend request nadakkumbothu
-              button disable aagum.
+              Backend request nadakkumbothu button disable aagum.
           ================================== */}
 
           <button
@@ -193,8 +191,7 @@ function Login({ setPage, onLogin }) {
         {/* =================================
             REGISTER LINK
 
-            Account illana Register page-ku
-            navigate panna use pannrom.
+            Account illana Register page-ku navigate panna use pannrom.
         ================================== */}
 
         <div className="auth-switch">

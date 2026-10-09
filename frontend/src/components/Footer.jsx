@@ -6,8 +6,7 @@ function Footer() {
       {/* =================================
           FOOTER MAIN CONTENT
 
-          Footer-la 3 information sections
-          display panna porom.
+          Footer-la 3 information sections display panna porom.
       ================================== */}
 
       <div className="footer-content">
@@ -16,8 +15,7 @@ function Footer() {
         {/* =================================
             SECTION 1 - BRAND
 
-            Application name and short
-            description inga display pannrom.
+            Application name and short description inga display pannrom.
         ================================== */}
 
         <div>
@@ -37,8 +35,7 @@ function Footer() {
         {/* =================================
             SECTION 2 - FEATURES
 
-            Application-la irukkura main
-            features-a short-aa show pannrom.
+            Application-la irukkura main features-a short-aa show pannrom.
         ================================== */}
 
         <div>
@@ -65,8 +62,7 @@ function Footer() {
         {/* =================================
             SECTION 3 - ABOUT
 
-            AI result pathi small
-            information kudukkirom.
+            AI result pathi small information kudukkirom.
         ================================== */}
 
         <div>
@@ -88,8 +84,7 @@ function Footer() {
       {/* =================================
           FOOTER BOTTOM
 
-          Copyright information
-          inga display pannrom.
+          Copyright information inga display pannrom.
       ================================== */}
 
       <div className="footer-bottom">

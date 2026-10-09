@@ -604,9 +604,7 @@ function PlantCheck({ selectedPlantId }) {
 
           {/* =================================
               ANALYSE BUTTON
-
-              AI result illana mattum
-              button display aagum.
+              AI result illana mattum button display aagum.
           ================================== */}
 
           {!currentCheck.ai_result && (

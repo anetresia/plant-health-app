@@ -41,10 +41,8 @@ function App() {
 
   // My Plants-la user click panna
   // plant-oda ID inga store aagum.
-  //
   // Example:
   // Tomato Plant → id = 5
-  //
   // selectedPlantId = 5
   const [selectedPlantId, setSelectedPlantId] =
     useState(null);
@@ -112,12 +110,7 @@ function App() {
 
       {/* =================================
           NAVBAR
-
-          Navbar-ku current page,
-          navigation function,
-          logged-in user,
-          logout function
-          pass pannrom.
+         Navbar-ku current page, navigation function, logged-in user, logout function pass pannrom.
       ================================== */}
 
       <Navbar
@@ -130,13 +123,10 @@ function App() {
 
       {/* =================================
           MAIN CONTENT
-
-          page state based on
-          different pages display pannrom.
+          page state based on different pages display pannrom.
       ================================== */}
 
       <main>
-
 
         {/* HOME */}
 
@@ -181,13 +171,6 @@ function App() {
         )}
 
 
-        {/* =================================
-            MY PLANTS
-
-            MyPlants-ku selected plant ID
-            set panna function send pannrom.
-        ================================== */}
-
         {page === "plants" && (
 
           <MyPlants
@@ -196,16 +179,6 @@ function App() {
           />
 
         )}
-
-
-        {/* =================================
-            PLANT CHECK
-
-            Selected plant ID-yum
-            PlantCheck-ku send pannrom.
-
-            Ithu dhaan important connection.
-        ================================== */}
 
         {page === "plant-check" && (
 
@@ -216,11 +189,6 @@ function App() {
         )}
 
       </main>
-
-
-      {/* =================================
-          FOOTER
-      ================================== */}
 
       <Footer />
 

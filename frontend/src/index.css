@@ -266,10 +266,6 @@ select:focus {
   box-shadow:
     0 5px 20px rgba(0, 0, 0, 0.06);
 
-  /* 
-     Card expand aagumbothu
-     content properly display aagum.
-  */
   overflow: hidden;
 
   /* Smooth card movement */
@@ -335,16 +331,6 @@ select:focus {
 /* =================================
    HEALTH CHECK SECTION
 ================================= */
-
-/*
-   Important:
-
-   Indha section initially render aagadhu.
-
-   User "View Health Check"
-   click pannumbothu mattum
-   React indha section-a show pannum.
-*/
 
 .latest-check-box {
   margin-top: 18px;
@@ -433,24 +419,6 @@ select:focus {
    AI RESULT
 ================================= */
 
-/*
-   AI result particular plant card-kulla
-   mattum show aagum.
-
-   Example:
-
-   Tomato
-      ↓
-   Tomato symptoms
-      ↓
-   Tomato AI result
-
-   Chilli
-      ↓
-   Chilli symptoms
-      ↓
-   Chilli AI result
-*/
 
 .latest-check-box .ai-result {
   margin-top: 16px;
@@ -488,12 +456,6 @@ select:focus {
   line-height: 1.7;
 
   font-size: 14px;
-
-  /*
-     Gemini response-la
-     multiple lines irundha
-     same formatting maintain pannum.
-  */
 
   white-space: pre-line;
 }
