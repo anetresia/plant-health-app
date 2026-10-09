@@ -54,7 +54,8 @@ def analyze_plant(
     # User plant information-a
     # Gemini understand pannura maathiri
     # prompt create pannrom.
-
+    
+# python la f-string use panni variables-a prompt-la insert pannrom.
     prompt = f"""
 You are a plant health assistant.
 
