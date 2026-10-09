@@ -3,21 +3,21 @@ import { useEffect, useState } from "react";
 import {
   getPlants,
   addPlant,
-  deletePlant
+  deletePlant,
+  getPlantChecks
 } from "../services/api";
+
 
 function MyPlants({
   setPage,
   setSelectedPlantId
 }) {
+
   // =================================
   // LOGGED-IN USER
   // =================================
-  // Login success aana user information
-  // localStorage-la save pannirukkom.
-  //
-  // Andha user name-a eduthu
-  // current owner-aa use pannrom.
+  // Login pannina user information-a
+  // localStorage-la irundhu edukkrom.
 
   const storedUser =
     localStorage.getItem("plantCareUser");
@@ -29,48 +29,92 @@ function MyPlants({
   const currentUserName =
     currentUser?.name || "";
 
-  // =================================
-  // PLANTS STATE
-  // =================================
 
+  // =================================
+  // PLANTS
+  // =================================
   // Backend-la irundhu varra
   // plants list-a store pannrom.
+
   const [plants, setPlants] = useState([]);
 
-  // Add Plant form values
+
+  // =================================
+  // ADD PLANT FORM
+  // =================================
+
   const [name, setName] = useState("");
   const [plantType, setPlantType] = useState("");
   const [location, setLocation] = useState("");
 
-  // Search value
+
+  // =================================
+  // SEARCH
+  // =================================
+
   const [search, setSearch] = useState("");
 
-  // Loading status
-  const [loading, setLoading] = useState(false);
+
+  // =================================
+  // LOADING
+  // =================================
+
+  const [loading, setLoading] =
+    useState(false);
+
+
+  // =================================
+  // EXPANDED PLANT
+  // =================================
+  // Endha plant-oda health check
+  // open pannirukkom-nu store pannrom.
+  //
+  // Initially null.
+  // So page open aagumbothu
+  // health result edhuvum show aagadhu.
+
+  const [expandedPlantId, setExpandedPlantId] =
+    useState(null);
+
+
+  // =================================
+  // HEALTH CHECK DATA
+  // =================================
+  // Click panna plant-oda health check
+  // inga store pannrom.
+
+  const [healthChecks, setHealthChecks] =
+    useState({});
+
+
+  // =================================
+  // HEALTH CHECK LOADING
+  // =================================
+
+  const [healthLoading, setHealthLoading] =
+    useState(false);
+
 
   // =================================
   // LOAD PLANTS
   // =================================
 
   async function loadPlants() {
+
     try {
+
       setLoading(true);
 
-      // Inga owner filter use pannala.
-      //
-      // Reason:
-      // User-created plants mattum illaama,
-      // other users-oda plants-um view panna
-      // allow pannrom.
-      //
-      // But Delete button mattum owner-ku
-      // condition based-a show pannuvom.
+      // Search value based on
+      // plants fetch pannrom.
 
-      const data = await getPlants(search);
+      const data =
+        await getPlants(search);
 
       setPlants(data);
 
     } catch (error) {
+
       console.error(error);
 
       alert(
@@ -79,29 +123,41 @@ function MyPlants({
       );
 
     } finally {
+
       setLoading(false);
+
     }
   }
+
 
   // =================================
   // LOAD PLANTS WHEN SEARCH CHANGES
   // =================================
 
   useEffect(() => {
+
     loadPlants();
+
   }, [search]);
+
 
   // =================================
   // ADD PLANT
   // =================================
 
   async function handleAddPlant(e) {
-    // Browser form refresh-a stop pannrom.
+
+    // Browser form refresh-a
+    // stop pannrom.
+
     e.preventDefault();
 
+
     // Login pannala na plant add
-    // panna allow panna koodathu.
+    // panna allow pannakoodathu.
+
     if (!currentUserName) {
+
       alert(
         "Please login before adding a plant."
       );
@@ -109,11 +165,14 @@ function MyPlants({
       return;
     }
 
-    // Required fields check
+
+    // Required fields check.
+
     if (
       !name.trim() ||
       !plantType.trim()
     ) {
+
       alert(
         "Plant name and plant type are required."
       );
@@ -121,31 +180,38 @@ function MyPlants({
       return;
     }
 
+
     try {
-      // =================================
-      // ADD PLANT TO BACKEND
-      // =================================
-      // Owner name manually type panna vendam.
-      //
-      // Login pannina current user's name
-      // automatically owner_name-aa send pannrom.
+
+      // Current logged-in user name-a
+      // automatically owner-aa save pannrom.
 
       await addPlant({
+
         name: name,
+
         plant_type: plantType,
+
         location: location,
+
         owner_name: currentUserName
+
       });
 
-      // Form clear
+
+      // Form clear.
+
       setName("");
       setPlantType("");
       setLocation("");
 
-      // Updated plants list load
+
+      // Updated plant list load.
+
       loadPlants();
 
     } catch (error) {
+
       console.error(error);
 
       alert(
@@ -155,20 +221,23 @@ function MyPlants({
     }
   }
 
+
   // =================================
   // DELETE PLANT
   // =================================
 
   async function handleDelete(plant) {
+
     // =================================
     // OWNER CHECK
     // =================================
-    // Current logged-in user than
-    // plant owner-aa irukkanum.
+    // Current user owner-aa irundha
+    // mattum delete panna allow pannrom.
 
     if (
       plant.owner_name !== currentUserName
     ) {
+
       alert(
         "You can only delete your own plants."
       );
@@ -176,37 +245,41 @@ function MyPlants({
       return;
     }
 
-    // =================================
-    // DELETE CONFIRMATION
-    // =================================
-    // User confirmation illama delete
-    // panna koodathu.
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${plant.name}"?`
-    );
+    // =================================
+    // CONFIRMATION
+    // =================================
+
+    const confirmed =
+      window.confirm(
+        `Are you sure you want to delete "${plant.name}"?`
+      );
+
 
     if (!confirmed) {
+
       return;
     }
 
+
     try {
-      // =================================
-      // DELETE FROM BACKEND
-      // =================================
-      // Backend owner verification-ku
-      // current user's name send pannrom.
+
+      // Backend-ku plant ID + owner name
+      // send pannrom.
 
       await deletePlant(
         plant.id,
         currentUserName
       );
 
-      // Delete successful aana
-      // latest list reload pannrom.
+
+      // Delete success aana
+      // list reload pannrom.
+
       loadPlants();
 
     } catch (error) {
+
       console.error(error);
 
       alert(
@@ -216,20 +289,138 @@ function MyPlants({
     }
   }
 
+
   // =================================
-  // OPEN PLANT HEALTH CHECK
+  // VIEW / HIDE HEALTH CHECK
+  // =================================
+
+  async function handleHealthCheck(plant) {
+
+    // =================================
+    // IF ALREADY OPEN
+    // =================================
+    // Same button second time click panna
+    // health section close pannrom.
+
+    if (
+      expandedPlantId === plant.id
+    ) {
+
+      setExpandedPlantId(null);
+
+      return;
+    }
+
+
+    // =================================
+    // OPEN THIS PLANT
+    // =================================
+    // Current plant ID mattum expand pannrom.
+
+    setExpandedPlantId(
+      plant.id
+    );
+
+
+    // Already data load pannirundha
+    // API request again panna vendam.
+
+    if (
+      healthChecks[plant.id] !== undefined
+    ) {
+
+      return;
+    }
+
+
+    try {
+
+      setHealthLoading(true);
+
+
+      // =================================
+      // GET THIS PLANT'S HISTORY
+      // =================================
+      // Important:
+      //
+      // plant.id use pannrom.
+      //
+      // So Tomato click pannina
+      // Tomato history mattum varum.
+      //
+      // Chilli click pannina
+      // Chilli history mattum varum.
+
+      const checks =
+        await getPlantChecks(
+          plant.id
+        );
+
+
+      // Backend date descending order-la
+      // history return pannum.
+      //
+      // So first item latest check.
+
+      const latestCheck =
+        checks.length > 0
+          ? checks[0]
+          : null;
+
+
+      // Particular plant ID-ku
+      // particular health check save pannrom.
+
+      setHealthChecks((previous) => ({
+        ...previous,
+
+        [plant.id]: latestCheck
+
+      }));
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        error.message ||
+        "Failed to load health check."
+      );
+
+    } finally {
+
+      setHealthLoading(false);
+
+    }
+  }
+
+
+  // =================================
+  // OPEN PLANT CHECK PAGE
   // =================================
 
   function handlePlantClick(plant) {
-    // Selected plant ID App.jsx-ku send pannrom.
-    setSelectedPlantId(plant.id);
+
+    // Selected plant ID App.jsx-ku
+    // send pannrom.
+
+    setSelectedPlantId(
+      plant.id
+    );
+
 
     // Plant Check page open pannrom.
-    setPage("plant-check");
+
+    setPage(
+      "plant-check"
+    );
   }
 
+
   return (
+
     <div className="page">
+
 
       {/* =================================
           PAGE HEADER
@@ -246,7 +437,8 @@ function MyPlants({
         </h1>
 
         <p>
-          Add and manage your plants in one place.
+          Add and manage your plants
+          in one place.
         </p>
 
       </div>
@@ -263,13 +455,14 @@ function MyPlants({
         </h2>
 
         <p className="card-description">
-          Your logged-in account will automatically
-          be saved as the plant owner.
+          Your logged-in account will
+          automatically be saved as the owner.
         </p>
 
-        <form onSubmit={handleAddPlant}>
 
-          {/* Plant Name */}
+        <form
+          onSubmit={handleAddPlant}
+        >
 
           <label>
             Plant Name
@@ -285,8 +478,6 @@ function MyPlants({
           />
 
 
-          {/* Plant Type */}
-
           <label>
             Plant Type
           </label>
@@ -300,8 +491,6 @@ function MyPlants({
             }
           />
 
-
-          {/* Location */}
 
           <label>
             Location{" "}
@@ -320,8 +509,6 @@ function MyPlants({
           />
 
 
-          {/* Owner */}
-
           <label>
             Owner Name
           </label>
@@ -332,8 +519,6 @@ function MyPlants({
             readOnly
           />
 
-
-          {/* Add Button */}
 
           <button
             className="primary-btn"
@@ -348,23 +533,20 @@ function MyPlants({
 
 
       {/* =================================
-          SEARCH SECTION
+          SEARCH
       ================================== */}
 
       <div className="search-section">
 
-        <div>
+        <h2>
+          Your Plants
+        </h2>
 
-          <h2>
-            Your Plants
-          </h2>
+        <p>
+          Search your plants and view
+          their health information.
+        </p>
 
-          <p>
-            Search plants and view their
-            health information.
-          </p>
-
-        </div>
 
         <input
           className="search-input"
@@ -431,39 +613,49 @@ function MyPlants({
             plants.map((plant) => {
 
               // =================================
-              // CHECK PLANT OWNER
+              // OWNER CHECK
               // =================================
-              // Current user name and
-              // plant owner name same-aa irundha
-              // idhu current user's plant.
 
               const isOwner =
                 plant.owner_name ===
                 currentUserName;
+
+
+              // =================================
+              // CURRENT PLANT HEALTH CHECK
+              // =================================
+              // Indha particular plant-ku
+              // load pannina latest check.
+
+              const latestCheck =
+                healthChecks[plant.id];
+
+
+              // =================================
+              // CHECK WHETHER CARD IS OPEN
+              // =================================
+
+              const isExpanded =
+                expandedPlantId ===
+                plant.id;
+
 
               return (
 
                 <div
                   className="plant-card"
                   key={plant.id}
-
-                  // Whole card click
-                  // Plant Check page open pannum.
-                  onClick={() =>
-                    handlePlantClick(plant)
-                  }
-
-                  style={{
-                    cursor: "pointer"
-                  }}
                 >
+
 
                   {/* =================================
                       PLANT IMAGE
                   ================================== */}
 
                   <div className="plant-image">
+
                     🌱
+
                   </div>
 
 
@@ -483,11 +675,14 @@ function MyPlants({
 
                     <p className="plant-location">
                       📍{" "}
+
                       {plant.location ||
                         "Location not provided"}
+
                     </p>
 
                     <p className="plant-owner">
+
                       👤{" "}
 
                       <strong>
@@ -502,24 +697,125 @@ function MyPlants({
 
 
                   {/* =================================
-                      VIEW HEALTH CHECK
+                      HEALTH CHECK SECTION
+                  ================================== */}
+                  {/* 
+                      IMPORTANT:
+                      Initially hidden.
+                      
+                      View Health Check button click
+                      pannina mattum indha section
+                      show aagum.
+                  */}
+
+                  {isExpanded && (
+
+                    <div className="latest-check-box">
+
+                      <h4>
+                        🩺 Health Check
+                      </h4>
+
+
+                      {healthLoading && (
+
+                        <p className="check-loading">
+                          Loading health information...
+                        </p>
+
+                      )}
+
+
+                      {!healthLoading &&
+                        latestCheck === null && (
+
+                        <p className="no-check">
+                          No health check found
+                          for this plant.
+                        </p>
+
+                      )}
+
+
+                      {!healthLoading &&
+                        latestCheck && (
+
+                        <>
+
+                          {/* Problem */}
+
+                          <div className="check-detail">
+
+                            <strong>
+                              Problem:
+                            </strong>
+
+                            <p>
+                              {latestCheck.symptoms}
+                            </p>
+
+                          </div>
+
+
+                          {/* Date */}
+
+                          <div className="check-detail">
+
+                            <strong>
+                              Check Date:
+                            </strong>
+
+                            <p>
+                              {latestCheck.check_date}
+                            </p>
+
+                          </div>
+
+
+                          {/* AI RESULT */}
+
+                          {latestCheck.ai_result && (
+
+                            <div className="ai-result">
+
+                              <h4>
+                                🤖 AI Analysis Result
+                              </h4>
+
+                              <p>
+                                {latestCheck.ai_result}
+                              </p>
+
+                            </div>
+
+                          )}
+
+                        </>
+
+                      )}
+
+                    </div>
+
+                  )}
+
+
+                  {/* =================================
+                      VIEW / HIDE HEALTH CHECK BUTTON
                   ================================== */}
 
                   <button
                     className="primary-btn"
                     type="button"
 
-                    onClick={(e) => {
-
-                      // Parent card click stop
-                      e.stopPropagation();
-
-                      // Plant Check open
-                      handlePlantClick(plant);
-
-                    }}
+                    onClick={() =>
+                      handleHealthCheck(plant)
+                    }
                   >
-                    View Health Check
+
+                    {isExpanded
+                      ? "Hide Health Check"
+                      : "View Health Check"}
+
                   </button>
 
 
@@ -533,21 +829,34 @@ function MyPlants({
                       className="delete-btn"
                       type="button"
 
-                      onClick={(e) => {
-
-                        // Parent card click stop
-                        e.stopPropagation();
-
-                        // Current user's plant
-                        // mattum delete pannuvom.
-                        handleDelete(plant);
-
-                      }}
+                      onClick={() =>
+                        handleDelete(plant)
+                      }
                     >
+
                       Delete
+
                     </button>
 
                   )}
+
+
+                  {/* =================================
+                      OPEN FULL HEALTH CHECK PAGE
+                  ================================== */}
+
+                  <button
+                    className="secondary-btn"
+                    type="button"
+
+                    onClick={() =>
+                      handlePlantClick(plant)
+                    }
+                  >
+
+                    Open Full Health Check
+
+                  </button>
 
                 </div>
 
@@ -562,7 +871,10 @@ function MyPlants({
       )}
 
     </div>
+
   );
+
 }
+
 
 export default MyPlants;
