@@ -8,6 +8,7 @@ import {
   getPlantChecks,
 } from "../services/api";
 
+
 // ==========================================
 // STRUCTURED AI RESULT
 // ==========================================
@@ -19,7 +20,6 @@ function AIResultDisplay({ result }) {
 
   let parsedResult = result;
 
-  // Old JSON string irundhaal parse pannrom.
   if (typeof parsedResult === "string") {
     try {
       parsedResult = JSON.parse(parsedResult);
@@ -98,38 +98,39 @@ function AIResultDisplay({ result }) {
   );
 }
 
+
 // ==========================================
 // PLANT CHECK COMPONENT
 // ==========================================
 
 function PlantCheck({ selectedPlantId }) {
-  // Plants list
   const [plants, setPlants] = useState([]);
 
-  // Selected plant
   const [selectedId, setSelectedId] = useState(
     selectedPlantId ? String(selectedPlantId) : ""
   );
 
-  // Form data
   const [symptoms, setSymptoms] = useState("");
   const [checkDate, setCheckDate] = useState("");
 
-  // Current check and history
+  // Selected image File object.
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  // Image preview URL.
+  const [imagePreview, setImagePreview] = useState("");
+
   const [currentCheck, setCurrentCheck] = useState(null);
   const [history, setHistory] = useState([]);
 
-  // Loading states
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
 
-  // Messages
   const [error, setError] = useState("");
   const [symptomsError, setSymptomsError] = useState("");
   const [message, setMessage] = useState("");
 
   // ==========================================
-  // VALIDATE PLANT SYMPTOMS
+  // VALIDATE SYMPTOMS
   // ==========================================
 
   function validateSymptoms(value) {
@@ -194,9 +195,7 @@ function PlantCheck({ selectedPlantId }) {
         setPlants(data);
       } catch (err) {
         console.error(err);
-        setError(
-          err.message || "Failed to load plants."
-        );
+        setError(err.message || "Failed to load plants.");
       }
     }
 
@@ -241,16 +240,78 @@ function PlantCheck({ selectedPlantId }) {
   }, [selectedId]);
 
   // ==========================================
+  // CLEAN UP PREVIEW URL
+  // ==========================================
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  // ==========================================
+  // RESET IMAGE
+  // ==========================================
+
+  function clearSelectedImage() {
+    setSelectedImage(null);
+    setImagePreview("");
+  }
+
+  // ==========================================
+  // IMAGE SELECTION
+  // ==========================================
+
+  function handleImageChange(e) {
+    const file = e.target.files?.[0];
+
+    setError("");
+    setMessage("");
+
+    if (!file) {
+      clearSelectedImage();
+      return;
+    }
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      clearSelectedImage();
+      e.target.value = "";
+
+      setError("Please select a JPG, PNG, or WebP image.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      clearSelectedImage();
+      e.target.value = "";
+
+      setError("Image size must not exceed 5 MB.");
+      return;
+    }
+
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
+
+  // ==========================================
   // PLANT CHANGE
   // ==========================================
 
   function handlePlantChange(e) {
-    const plantId = e.target.value;
-
-    setSelectedId(plantId);
+    setSelectedId(e.target.value);
     setCurrentCheck(null);
     setSymptoms("");
     setCheckDate("");
+    clearSelectedImage();
+
     setMessage("");
     setError("");
     setSymptomsError("");
@@ -299,6 +360,7 @@ function PlantCheck({ selectedPlantId }) {
     try {
       setLoading(true);
 
+      // Image illama check details mattum save pannrom.
       const data = await createPlantCheck({
         plant_id: Number(selectedId),
         symptoms: symptoms.trim(),
@@ -306,10 +368,17 @@ function PlantCheck({ selectedPlantId }) {
       });
 
       setCurrentCheck(data);
-      setMessage("Plant check saved successfully.");
+      setMessage(
+        selectedImage
+          ? "Plant check saved. Your selected image is ready for AI analysis."
+          : "Plant check saved successfully."
+      );
 
       setSymptoms("");
       setCheckDate("");
+
+      // Image state-ai clear panna maattom.
+      // AI analysis-ku image thevai.
 
       const updatedHistory = await getPlantChecks(
         selectedId
@@ -318,7 +387,6 @@ function PlantCheck({ selectedPlantId }) {
       setHistory(updatedHistory);
     } catch (err) {
       console.error(err);
-
       setError(
         err.message || "Failed to save plant check."
       );
@@ -353,15 +421,17 @@ function PlantCheck({ selectedPlantId }) {
     try {
       setAnalyzing(true);
 
+      // Image-ai analysis request-la mattum send pannrom.
       const data = await analyzePlantCheck(
-        currentCheck.id
+        currentCheck.id,
+        selectedImage
       );
 
       setCurrentCheck(data);
+      setMessage("Plant analysis completed successfully.");
 
-      setMessage(
-        "Plant analysis completed successfully."
-      );
+      // Analysis mudinja piragu local image state clear pannrom.
+      clearSelectedImage();
 
       const updatedHistory = await getPlantChecks(
         selectedId
@@ -370,7 +440,6 @@ function PlantCheck({ selectedPlantId }) {
       setHistory(updatedHistory);
     } catch (err) {
       console.error(err);
-
       setError(
         err.message || "Failed to analyze plant."
       );
@@ -446,7 +515,8 @@ function PlantCheck({ selectedPlantId }) {
         <h2>New Health Check</h2>
 
         <p className="card-description">
-          Describe what you notice about your plant.
+          Describe your plant symptoms and optionally
+          upload a plant image for AI analysis.
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -461,9 +531,7 @@ function PlantCheck({ selectedPlantId }) {
             onChange={handlePlantChange}
             required
           >
-            <option value="">
-              -- Select a plant --
-            </option>
+            <option value="">-- Select a plant --</option>
 
             {plants.map((plant) => (
               <option
@@ -514,6 +582,67 @@ function PlantCheck({ selectedPlantId }) {
             </p>
           )}
 
+          {/* IMAGE UPLOAD */}
+          <label htmlFor="plant-image">
+            Plant Image (Optional)
+          </label>
+
+          <input
+            id="plant-image"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleImageChange}
+            disabled={loading || analyzing}
+          />
+
+          <p className="card-description">
+            JPG, PNG, or WebP. Maximum size: 5 MB.
+            The image is sent for AI analysis and is not
+            stored in your database.
+          </p>
+
+          {/* IMAGE PREVIEW */}
+          {imagePreview && (
+            <div style={{ margin: "16px 0" }}>
+              <img
+                src={imagePreview}
+                alt="Selected plant preview"
+                style={{
+                  display: "block",
+                  width: "100%",
+                  maxWidth: "360px",
+                  maxHeight: "300px",
+                  objectFit: "contain",
+                  borderRadius: "10px",
+                  border: "1px solid #ddd",
+                }}
+              />
+
+              <p>
+                Selected file: {selectedImage?.name}
+              </p>
+
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => {
+                  clearSelectedImage();
+
+                  const input = document.getElementById(
+                    "plant-image"
+                  );
+
+                  if (input) {
+                    input.value = "";
+                  }
+                }}
+                disabled={loading || analyzing}
+              >
+                Remove Image
+              </button>
+            </div>
+          )}
+
           {/* CHECK DATE */}
           <label htmlFor="check-date">
             Check Date
@@ -558,16 +687,26 @@ function PlantCheck({ selectedPlantId }) {
 
           {/* ANALYSE BUTTON */}
           {!currentCheck.ai_result && (
-            <button
-              className="primary-btn"
-              type="button"
-              onClick={handleAnalyze}
-              disabled={analyzing || loading}
-            >
-              {analyzing
-                ? "Analysing..."
-                : "Analyse with AI"}
-            </button>
+            <>
+              {selectedImage && (
+                <p>
+                  📷 Image selected: {selectedImage.name}
+                </p>
+              )}
+
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={handleAnalyze}
+                disabled={analyzing || loading}
+              >
+                {analyzing
+                  ? "Analysing..."
+                  : selectedImage
+                    ? "Analyse Image with AI"
+                    : "Analyse with AI"}
+              </button>
+            </>
           )}
 
           {/* STRUCTURED AI RESULT */}
@@ -605,7 +744,6 @@ function PlantCheck({ selectedPlantId }) {
 
                 <p>{check.symptoms}</p>
 
-                {/* STRUCTURED HISTORY AI RESULT */}
                 <AIResultDisplay
                   result={check.ai_result}
                 />

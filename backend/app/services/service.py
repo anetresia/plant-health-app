@@ -2,9 +2,11 @@
 import os
 import time
 import json
+from typing import Optional
 
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 from google.genai.errors import ServerError
 
 
@@ -27,7 +29,15 @@ def analyze_plant(
     plant_name: str,
     plant_type: str,
     symptoms: str,
+    image_bytes: Optional[bytes] = None,
+    image_mime_type: Optional[str] = None,
 ) -> dict:
+    """
+    Plant symptoms and optional image-ai Gemini-kku anuppi,
+    structured JSON result return pannum.
+
+    Image permanent-aa save panna maattom.
+    """
 
     # Lecturer worksheet-ku match aagura JSON prompt.
     prompt = f"""
@@ -36,6 +46,24 @@ You are a careful plant health assistant.
 Plant name: {plant_name}
 Plant type: {plant_type}
 Reported symptoms: {symptoms}
+
+Analyze the reported symptoms and the uploaded image,
+if an image is provided.
+
+Image analysis rules:
+- Check whether the image clearly shows a plant.
+- Look for visible signs such as leaf discoloration,
+  spots, curling, wilting, or other plant damage.
+- Do not invent visual details that cannot be seen.
+- If the image is blurry or unclear, explain that
+  the image is insufficient for reliable assessment.
+- If the image does not show a plant, do not diagnose
+  a plant disease from that image.
+- If the image and reported symptoms do not match,
+  mention that uncertainty in the explanation.
+- Do not claim a guaranteed diagnosis.
+- If no image is provided, analyze the reported
+  symptoms using text only.
 
 Return ONLY a valid JSON object.
 Do not include Markdown code fences or extra text.
@@ -54,14 +82,36 @@ Use exactly this structure:
 }}
 
 Rules:
-- Do not invent symptoms that were not reported.
-- Do not claim a guaranteed diagnosis.
-- Explain uncertainty if the symptoms are insufficient.
+- Do not invent symptoms that were not reported
+  or signs that are not visible in the image.
+- Explain uncertainty if the evidence is insufficient.
 - care_suggestions must be a list of strings.
 - expert_advice_needed must be true or false, not a string.
 - Set expert_advice_needed to true when expert agricultural
   advice is recommended.
 """
+
+    # Text prompt-ai Gemini contents-la add pannrom.
+    contents = [prompt]
+
+    # Image irundhaal mattum image part add pannrom.
+    if image_bytes is not None:
+        if not image_bytes:
+            raise ValueError("The uploaded image is empty.")
+
+        if image_mime_type not in {
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        }:
+            raise ValueError("Unsupported image type.")
+
+        contents.append(
+            types.Part.from_bytes(
+                data=image_bytes,
+                mime_type=image_mime_type,
+            )
+        )
 
     # Maximum 3 attempts.
     for attempt in range(3):
@@ -70,7 +120,7 @@ Rules:
 
             response = client.models.generate_content(
                 model="gemini-3.1-flash-lite",
-                contents=prompt,
+                contents=contents,
                 config={
                     "response_mime_type": "application/json"
                 },
@@ -111,6 +161,19 @@ Rules:
                     + ", ".join(missing_fields)
                 )
 
+            # Extra fields irundhaal reject pannrom.
+            extra_fields = [
+                field
+                for field in result
+                if field not in required_fields
+            ]
+
+            if extra_fields:
+                raise ValueError(
+                    "Unexpected fields: "
+                    + ", ".join(extra_fields)
+                )
+
             # Field types validate pannrom.
             if not isinstance(result["possible_issue"], str):
                 raise ValueError(
@@ -140,7 +203,7 @@ Rules:
                     "expert_advice_needed must be a boolean."
                 )
 
-            # Python dictionary return pannrom.
+            # Valid Python dictionary return pannrom.
             return result
 
         except ServerError as error:
@@ -157,7 +220,6 @@ Rules:
             time.sleep(5)
 
         except (json.JSONDecodeError, ValueError) as error:
-            # Lecturer worksheet: JSON error handling.
             print("Gemini returned invalid JSON:", error)
 
             if attempt == 2:
@@ -166,3 +228,5 @@ Rules:
                 ) from error
 
             time.sleep(2)
+
+    raise RuntimeError("Plant analysis failed.")

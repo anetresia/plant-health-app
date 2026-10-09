@@ -1,7 +1,16 @@
 
 import json
+from datetime import date
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    UploadFile,
+    File,
+    Form,
+)
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -10,7 +19,6 @@ from app.models.plant import Plant
 from app.models.plant_check import PlantCheck
 from app.schemas.plant_check import (
     PlantAIResult,
-    PlantCheckCreate,
     PlantCheckResponse,
 )
 from app.services.service import analyze_plant
@@ -21,8 +29,14 @@ router = APIRouter(
     tags=["Plant Checks"],
 )
 
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
-# Plant symptoms identify panna keywords.
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg": b"\xff\xd8\xff",
+    "image/png": b"\x89PNG\r\n\x1a\n",
+    "image/webp": b"RIFF",
+}
+
 PLANT_SYMPTOM_KEYWORDS = {
     "yellow", "yellowing", "brown", "spots", "spot",
     "curl", "curling", "curled", "wilting", "wilt",
@@ -71,11 +85,67 @@ def validate_symptoms(symptoms: str):
 
 
 # ==========================================
+# VALIDATE IMAGE
+# ==========================================
+
+async def validate_image(
+    image: Optional[UploadFile],
+):
+    if image is None:
+        return None, None
+
+    content_type = (image.content_type or "").lower()
+
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Only JPG, PNG, and WebP images are allowed.",
+        )
+
+    # Maximum 5 MB + 1 byte read pannrom.
+    image_bytes = await image.read(MAX_IMAGE_SIZE + 1)
+
+    if not image_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded image is empty.",
+        )
+
+    if len(image_bytes) > MAX_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail="Image size must not exceed 5 MB.",
+        )
+
+    # Actual file signature validate pannrom.
+    if not image_bytes.startswith(
+        ALLOWED_IMAGE_TYPES[content_type]
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded file does not match its image type.",
+        )
+
+    if content_type == "image/webp":
+        if (
+            len(image_bytes) < 12
+            or image_bytes[8:12] != b"WEBP"
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid WebP image.",
+            )
+
+    # Image memory-la mattum irukkum.
+    # Database / disk-la save panna maattom.
+    return image_bytes, content_type
+
+
+# ==========================================
 # SAFE JSON PARSER
 # ==========================================
 
 def parse_ai_result(value):
-    # AI result illai-na None return pannrom.
     if not value:
         return None
 
@@ -85,13 +155,11 @@ def parse_ai_result(value):
         if not isinstance(result, dict):
             return None
 
-        # Old records new schema-ku match aagudha-nu check pannrom.
         validated_result = PlantAIResult.model_validate(result)
 
         return validated_result.model_dump()
 
     except (json.JSONDecodeError, ValidationError, TypeError):
-        # Old plain-text / incompatible records-ku safe fallback.
         return None
 
 
@@ -118,13 +186,15 @@ def build_plant_check_response(check: PlantCheck):
     response_model=PlantCheckResponse,
 )
 def create_plant_check(
-    check_data: PlantCheckCreate,
+    plant_id: int = Form(...),
+    symptoms: str = Form(...),
+    check_date: date = Form(...),
     db: Session = Depends(get_db),
 ):
-    validate_symptoms(check_data.symptoms)
+    validate_symptoms(symptoms)
 
     plant = db.query(Plant).filter(
-        Plant.id == check_data.plant_id
+        Plant.id == plant_id
     ).first()
 
     if not plant:
@@ -134,9 +204,9 @@ def create_plant_check(
         )
 
     plant_check = PlantCheck(
-        plant_id=check_data.plant_id,
-        symptoms=check_data.symptoms,
-        check_date=check_data.check_date,
+        plant_id=plant_id,
+        symptoms=symptoms.strip(),
+        check_date=check_date,
     )
 
     db.add(plant_check)
@@ -154,8 +224,9 @@ def create_plant_check(
     "/{check_id}/analyze",
     response_model=PlantCheckResponse,
 )
-def analyze_plant_check(
+async def analyze_plant_check(
     check_id: int,
+    image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
     plant_check = db.query(PlantCheck).filter(
@@ -180,28 +251,32 @@ def analyze_plant_check(
             detail="Plant not found",
         )
 
-    # Gemini service-ai call pannrom.
+    # Image-ai analysis request-la receive pannrom.
+    image_bytes, image_mime_type = await validate_image(image)
+
     try:
         raw_result = analyze_plant(
             plant_name=plant.name,
             plant_type=plant.plant_type,
             symptoms=plant_check.symptoms,
+            image_bytes=image_bytes,
+            image_mime_type=image_mime_type,
         )
 
     except RuntimeError as error:
         raise HTTPException(
             status_code=503,
-            detail="AI analysis service is temporarily unavailable.",
+            detail=(
+                "AI analysis service is temporarily unavailable."
+            ),
         ) from error
 
-    # Service dictionary return pannudha-nu check pannrom.
     if not isinstance(raw_result, dict):
         raise HTTPException(
             status_code=502,
             detail="AI service returned an invalid response format.",
         )
 
-    # Pydantic schema moolama AI result validate pannrom.
     try:
         validated_result = PlantAIResult.model_validate(
             raw_result
@@ -221,7 +296,8 @@ def analyze_plant_check(
             },
         ) from error
 
-    # Dictionary-ai JSON string-aa database-la save pannrom.
+    # AI result mattum database-la save pannrom.
+    # Image-ai save panna maattom.
     plant_check.ai_result = json.dumps(
         validated_result.model_dump(),
         ensure_ascii=False,
