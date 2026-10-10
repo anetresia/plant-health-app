@@ -1,94 +1,66 @@
 
 const API_URL = "http://127.0.0.1:8000";
 
+async function readResponse(response) {
+  const text = await response.text();
+  let data = {};
 
-// =================================
-// CREATE PERSON
-// =================================
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("The server returned an invalid response.");
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      typeof data.detail === "string"
+        ? data.detail
+        : `Request failed (${response.status}).`
+    );
+  }
+
+  return data;
+}
 
 export async function createPerson(name, email) {
   const response = await fetch(`${API_URL}/persons/`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name,
-      email,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email }),
   });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-
-    console.error("Backend error:", errorData);
-
-    throw new Error(
-      errorData.detail || "Failed to create person"
-    );
-  }
-
-  return response.json();
+  return readResponse(response);
 }
-
-
-// =================================
-// VERIFY PERSON
-// =================================
 
 export async function verifyPerson(name, email) {
+  const query = new URLSearchParams({ name, email });
+
   const response = await fetch(
-    `${API_URL}/persons/verify?name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`
+    `${API_URL}/persons/verify?${query.toString()}`
   );
 
-  if (!response.ok) {
-    const errorData = await response.json();
-
-    throw new Error(
-      errorData.detail || "Person not found"
-    );
-  }
-
-  return response.json();
+  return readResponse(response);
 }
 
+export async function getPlants(search = "", ownerName = "") {
+  const query = new URLSearchParams({
+    search,
+    owner_name: ownerName,
+  });
 
-// =================================
-// GET PLANTS
-// =================================
-
-export async function getPlants(
-  search = "",
-  ownerName = ""
-) {
   const response = await fetch(
-    `${API_URL}/plants/?search=${encodeURIComponent(search)}&owner_name=${encodeURIComponent(ownerName)}`
+    `${API_URL}/plants/?${query.toString()}`
   );
 
-  if (!response.ok) {
-    const errorData = await response.json();
-
-    console.error("Backend error:", errorData);
-
-    throw new Error(
-      errorData.detail || "Failed to load plants"
-    );
-  }
-
-  return response.json();
+  return readResponse(response);
 }
-
-
-// =================================
-// ADD PLANT
-// =================================
 
 export async function addPlant(plant) {
   const response = await fetch(`${API_URL}/plants/`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: plant.name,
       plant_type: plant.plant_type,
@@ -97,107 +69,49 @@ export async function addPlant(plant) {
     }),
   });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-
-    console.error("Backend error:", errorData);
-
-    throw new Error(
-      errorData.detail || "Failed to add plant"
-    );
-  }
-
-  return response.json();
+  return readResponse(response);
 }
-
-
-// =================================
-// DELETE PLANT
-// =================================
 
 export async function deletePlant(id, ownerName) {
+  const query = new URLSearchParams({ owner_name: ownerName });
+
   const response = await fetch(
-    `${API_URL}/plants/${id}?owner_name=${encodeURIComponent(ownerName)}`,
-    {
-      method: "DELETE",
-    }
+    `${API_URL}/plants/${id}?${query.toString()}`,
+    { method: "DELETE" }
   );
 
-  if (!response.ok) {
-    const errorData = await response.json();
-
-    console.error("Backend error:", errorData);
-
-    throw new Error(
-      errorData.detail || "Failed to delete plant"
-    );
-  }
-
-  return response.json();
+  return readResponse(response);
 }
-
-
-// =================================
-// CREATE PLANT CHECK
-// =================================
-// Symptoms + date mattum database-la save pannrom.
-// Image-ai indha endpoint-la save panna maattom.
 
 export async function createPlantCheck(checkData) {
   const formData = new FormData();
 
-  formData.append(
-    "plant_id",
-    String(checkData.plant_id)
-  );
+  formData.append("plant_id", String(checkData.plant_id));
+  formData.append("symptoms", checkData.symptoms);
+  formData.append("check_date", checkData.check_date);
 
-  formData.append(
-    "symptoms",
-    checkData.symptoms
-  );
+  const response = await fetch(`${API_URL}/plant-checks/`, {
+    method: "POST",
+    body: formData,
+  });
 
-  formData.append(
-    "check_date",
-    checkData.check_date
-  );
-
-  const response = await fetch(
-    `${API_URL}/plant-checks/`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
-
-  if (!response.ok) {
-    const errorData = await response.json();
-
-    console.error("Backend error:", errorData);
-
-    throw new Error(
-      errorData.detail || "Failed to create plant check"
-    );
-  }
-
-  return response.json();
+  return readResponse(response);
 }
 
-
-// =================================
-// ANALYZE PLANT CHECK WITH AI
-// =================================
-// Selected image-ai analysis request-la mattum send pannrom.
-// Image database-la save panna maattom.
-
-export async function analyzePlantCheck(
-  checkId,
-  imageFile = null
-) {
+export async function analyzePlantCheck(checkId, imageFile = null) {
   const formData = new FormData();
 
-  if (imageFile) {
+  if (imageFile instanceof File) {
     formData.append("image", imageFile);
+
+    console.log("[API] Image attached:", imageFile.name);
+    console.log("[API] Image type:", imageFile.type);
+    console.log("[API] Image size:", imageFile.size);
+  } else {
+    console.log("[API] Text-only analysis; no image selected.");
   }
+
+  console.log("[API] Analyzing check:", checkId);
 
   const response = await fetch(
     `${API_URL}/plant-checks/${checkId}/analyze`,
@@ -207,43 +121,15 @@ export async function analyzePlantCheck(
     }
   );
 
-  if (!response.ok) {
-    const errorData = await response.json();
+  console.log("[API] HTTP status:", response.status);
 
-    console.error("Backend error:", errorData);
-
-    const detail = errorData.detail;
-
-    throw new Error(
-      typeof detail === "string"
-        ? detail
-        : "Failed to analyze plant"
-    );
-  }
-
-  return response.json();
+  return readResponse(response);
 }
-
-
-// =================================
-// GET PLANT CHECK HISTORY
-// =================================
 
 export async function getPlantChecks(plantId) {
   const response = await fetch(
     `${API_URL}/plant-checks/plant/${plantId}`
   );
 
-  if (!response.ok) {
-    const errorData = await response.json();
-
-    console.error("Backend error:", errorData);
-
-    throw new Error(
-      errorData.detail ||
-      "Failed to load plant check history"
-    );
-  }
-
-  return response.json();
+  return readResponse(response);
 }

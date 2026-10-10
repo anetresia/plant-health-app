@@ -21,13 +21,13 @@ from app.schemas.plant_check import (
     PlantAIResult,
     PlantCheckResponse,
 )
-from app.services.service import analyze_plant
-
-
-router = APIRouter(
-    prefix="/plant-checks",
-    tags=["Plant Checks"],
+from app.services.service import (
+    analyze_plant,
+    verify_plant_image,
+    PlantImageValidationError,
 )
+
+router = APIRouter(prefix="/plant-checks", tags=["Plant Checks"])
 
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
@@ -44,17 +44,13 @@ PLANT_SYMPTOM_KEYWORDS = {
     "insects", "insect", "pests", "pest", "aphids",
     "fungus", "fungal", "mold", "mildew", "rot",
     "rotting", "black", "white", "powder", "sticky",
-    "stunted", "discoloration", "discolored",
-    "dying", "decay", "leaves", "leaf", "stem",
-    "root", "roots", "flowers", "fruit", "blight",
-    "lesions", "damage", "damaged", "growth",
-    "falling", "fallen", "burnt", "burning",
+    "stunted", "discoloration", "discolored", "dying",
+    "decay", "leaves", "leaf", "stem", "root", "roots",
+    "flowers", "flower", "fruit", "blight", "lesions",
+    "damage", "damaged", "growth", "falling", "fallen",
+    "burnt", "burning",
 }
 
-
-# ==========================================
-# VALIDATE SYMPTOMS
-# ==========================================
 
 def validate_symptoms(symptoms: str):
     words = set(
@@ -68,41 +64,37 @@ def validate_symptoms(symptoms: str):
     if len(symptoms.strip()) < 5:
         raise HTTPException(
             status_code=422,
-            detail=(
-                "Insufficient information. Please describe "
-                "your plant symptoms."
-            ),
+            detail="Please describe your plant symptoms.",
         )
 
     if not words.intersection(PLANT_SYMPTOM_KEYWORDS):
         raise HTTPException(
             status_code=422,
             detail=(
-                "Please enter actual plant symptoms, such as "
-                "yellow leaves, curling leaves, or brown spots."
+                "Describe plant symptoms such as yellow leaves, "
+                "curling leaves, or brown spots."
             ),
         )
 
 
-# ==========================================
-# VALIDATE IMAGE
-# ==========================================
-
-async def validate_image(
-    image: Optional[UploadFile],
-):
+async def validate_image(image: Optional[UploadFile]):
     if image is None:
+        print("[IMAGE CHECK] No image uploaded. Text-only analysis.")
         return None, None
 
     content_type = (image.content_type or "").lower()
 
+    print(
+        f"[IMAGE CHECK] Uploaded file: {image.filename}; "
+        f"type: {content_type}"
+    )
+
     if content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status_code=400,
-            detail="Only JPG, PNG, and WebP images are allowed.",
+            detail="Please upload a JPG, PNG, or WebP image.",
         )
 
-    # Maximum 5 MB + 1 byte read pannrom.
     image_bytes = await image.read(MAX_IMAGE_SIZE + 1)
 
     if not image_bytes:
@@ -117,33 +109,22 @@ async def validate_image(
             detail="Image size must not exceed 5 MB.",
         )
 
-    # Actual file signature validate pannrom.
-    if not image_bytes.startswith(
-        ALLOWED_IMAGE_TYPES[content_type]
-    ):
+    if not image_bytes.startswith(ALLOWED_IMAGE_TYPES[content_type]):
         raise HTTPException(
             status_code=400,
             detail="The uploaded file does not match its image type.",
         )
 
     if content_type == "image/webp":
-        if (
-            len(image_bytes) < 12
-            or image_bytes[8:12] != b"WEBP"
-        ):
+        if len(image_bytes) < 12 or image_bytes[8:12] != b"WEBP":
             raise HTTPException(
                 status_code=400,
-                detail="Invalid WebP image.",
+                detail="The uploaded WebP image is invalid.",
             )
 
-    # Image memory-la mattum irukkum.
-    # Database / disk-la save panna maattom.
+    print(f"[IMAGE CHECK] Received {len(image_bytes)} bytes.")
     return image_bytes, content_type
 
-
-# ==========================================
-# SAFE JSON PARSER
-# ==========================================
 
 def parse_ai_result(value):
     if not value:
@@ -155,17 +136,11 @@ def parse_ai_result(value):
         if not isinstance(result, dict):
             return None
 
-        validated_result = PlantAIResult.model_validate(result)
-
-        return validated_result.model_dump()
+        return PlantAIResult.model_validate(result).model_dump()
 
     except (json.JSONDecodeError, ValidationError, TypeError):
         return None
 
-
-# ==========================================
-# BUILD RESPONSE
-# ==========================================
 
 def build_plant_check_response(check: PlantCheck):
     return {
@@ -177,14 +152,7 @@ def build_plant_check_response(check: PlantCheck):
     }
 
 
-# ==========================================
-# CREATE PLANT CHECK
-# ==========================================
-
-@router.post(
-    "/",
-    response_model=PlantCheckResponse,
-)
+@router.post("/", response_model=PlantCheckResponse)
 def create_plant_check(
     plant_id: int = Form(...),
     symptoms: str = Form(...),
@@ -193,15 +161,10 @@ def create_plant_check(
 ):
     validate_symptoms(symptoms)
 
-    plant = db.query(Plant).filter(
-        Plant.id == plant_id
-    ).first()
+    plant = db.query(Plant).filter(Plant.id == plant_id).first()
 
     if not plant:
-        raise HTTPException(
-            status_code=404,
-            detail="Plant not found",
-        )
+        raise HTTPException(status_code=404, detail="Plant not found.")
 
     plant_check = PlantCheck(
         plant_id=plant_id,
@@ -216,45 +179,62 @@ def create_plant_check(
     return build_plant_check_response(plant_check)
 
 
-# ==========================================
-# ANALYZE PLANT CHECK
-# ==========================================
-
-@router.post(
-    "/{check_id}/analyze",
-    response_model=PlantCheckResponse,
-)
+@router.post("/{check_id}/analyze", response_model=PlantCheckResponse)
 async def analyze_plant_check(
     check_id: int,
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
-    plant_check = db.query(PlantCheck).filter(
-        PlantCheck.id == check_id
-    ).first()
+    print(f"[REQUEST] Analysis requested for check {check_id}")
+
+    plant_check = (
+        db.query(PlantCheck)
+        .filter(PlantCheck.id == check_id)
+        .first()
+    )
 
     if not plant_check:
         raise HTTPException(
             status_code=404,
-            detail="Plant check not found",
+            detail="Plant check not found.",
         )
 
     validate_symptoms(plant_check.symptoms)
 
-    plant = db.query(Plant).filter(
-        Plant.id == plant_check.plant_id
-    ).first()
+    plant = (
+        db.query(Plant)
+        .filter(Plant.id == plant_check.plant_id)
+        .first()
+    )
 
     if not plant:
-        raise HTTPException(
-            status_code=404,
-            detail="Plant not found",
-        )
+        raise HTTPException(status_code=404, detail="Plant not found.")
 
-    # Image-ai analysis request-la receive pannrom.
     image_bytes, image_mime_type = await validate_image(image)
 
     try:
+        # Images must pass verification before disease analysis.
+        if image_bytes is not None:
+            print(
+                f"[IMAGE CHECK] Selected plant: {plant.name}; "
+                f"type: {plant.plant_type}"
+            )
+            print("[IMAGE CHECK] Verification started.")
+
+            verification = verify_plant_image(
+                plant_name=plant.name,
+                plant_type=plant.plant_type,
+                image_bytes=image_bytes,
+                image_mime_type=image_mime_type,
+            )
+
+            print(
+                "[IMAGE CHECK] Verification passed:",
+                verification,
+            )
+
+        print("[PLANT ANALYSIS] Analysis started.")
+
         raw_result = analyze_plant(
             plant_name=plant.name,
             plant_type=plant.plant_type,
@@ -263,41 +243,33 @@ async def analyze_plant_check(
             image_mime_type=image_mime_type,
         )
 
+    except PlantImageValidationError as error:
+        print(f"[IMAGE CHECK] Rejected: {error}")
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
     except RuntimeError as error:
+        print(f"[AI ERROR] {error}")
+
         raise HTTPException(
             status_code=503,
-            detail=(
-                "AI analysis service is temporarily unavailable."
-            ),
+            detail="AI analysis is temporarily unavailable. Please try again.",
         ) from error
-
-    if not isinstance(raw_result, dict):
-        raise HTTPException(
-            status_code=502,
-            detail="AI service returned an invalid response format.",
-        )
 
     try:
-        validated_result = PlantAIResult.model_validate(
-            raw_result
-        )
-
+        validated_result = PlantAIResult.model_validate(raw_result)
     except ValidationError as error:
+        print(f"[AI ERROR] Invalid result: {error}")
+
         raise HTTPException(
             status_code=502,
-            detail={
-                "message": (
-                    "AI result does not match the required schema."
-                ),
-                "errors": error.errors(
-                    include_input=False,
-                    include_context=False,
-                ),
-            },
+            detail="The AI returned an invalid result.",
         ) from error
 
-    # AI result mattum database-la save pannrom.
-    # Image-ai save panna maattom.
+    # Save the AI result only after successful verification and analysis.
     plant_check.ai_result = json.dumps(
         validated_result.model_dump(),
         ensure_ascii=False,
@@ -306,12 +278,10 @@ async def analyze_plant_check(
     db.commit()
     db.refresh(plant_check)
 
+    print(f"[PLANT ANALYSIS] Result saved for check {check_id}")
+
     return build_plant_check_response(plant_check)
 
-
-# ==========================================
-# GET PLANT CHECK HISTORY
-# ==========================================
 
 @router.get(
     "/plant/{plant_id}",
@@ -321,13 +291,11 @@ def get_plant_checks(
     plant_id: int,
     db: Session = Depends(get_db),
 ):
-    checks = db.query(PlantCheck).filter(
-        PlantCheck.plant_id == plant_id
-    ).order_by(
-        PlantCheck.check_date.desc()
-    ).all()
+    checks = (
+        db.query(PlantCheck)
+        .filter(PlantCheck.plant_id == plant_id)
+        .order_by(PlantCheck.check_date.desc())
+        .all()
+    )
 
-    return [
-        build_plant_check_response(check)
-        for check in checks
-    ]
+    return [build_plant_check_response(check) for check in checks]
